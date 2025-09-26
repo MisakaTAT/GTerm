@@ -18,7 +18,7 @@
     </div>
 
     <div v-if="!isDarwin" class="window-controls">
-      <div class="window-control-btn" @click="WindowMinimise">
+      <div class="window-control-btn" @click="Window.Minimise">
         <NIcon size="16"><Icon icon="ph:minus-bold" /></NIcon>
       </div>
       <div class="window-control-btn" @click="toggleMaximize">
@@ -26,7 +26,7 @@
           <Icon :icon="windowIsMaximised ? 'ph:corners-in-bold' : 'ph:corners-out-bold'" />
         </NIcon>
       </div>
-      <div class="window-control-btn close-btn" @click="Quit">
+      <div class="window-control-btn close-btn" @click="Window.Close">
         <NIcon size="16"><Icon icon="ph:x-bold" /></NIcon>
       </div>
     </div>
@@ -35,19 +35,8 @@
 
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue';
-import { IsDarwin } from '@wailsApp/go/services/PreferencesSrv';
-import {
-  EventsOff,
-  EventsOn,
-  Quit,
-  WindowFullscreen,
-  WindowIsFullscreen,
-  WindowIsMaximised,
-  WindowMaximise,
-  WindowMinimise,
-  WindowUnfullscreen,
-  WindowUnmaximise,
-} from '@wailsApp/runtime';
+import { IsDarwin } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/preferencessrv';
+import { Events, Window } from '@wailsio/runtime';
 import { NIcon } from 'naive-ui';
 import ConnectionTabs from '@/layouts/ConnectionTabs.vue';
 import { useConnectionStore } from '@/stores/connection';
@@ -71,39 +60,39 @@ const toConnection = () => {
 };
 
 const toggleMaximize = async () => {
-  const isMaximised = await WindowIsMaximised();
+  const isMaximised = await Window.IsMaximised();
   windowIsMaximised.value = !isMaximised;
-  isMaximised ? WindowUnmaximise() : WindowMaximise();
+  isMaximised ? Window.UnMaximise() : Window.Maximise();
 };
 
 const checkFullscreenStatus = async () => {
-  isFullscreen.value = await WindowIsFullscreen();
+  isFullscreen.value = await Window.IsFullscreen();
 };
 
 const toggleFullscreen = async () => {
-  const fullscreen = await WindowIsFullscreen();
+  const fullscreen = await Window.IsFullscreen();
   if (fullscreen) {
-    WindowUnfullscreen();
+    Window.UnFullscreen();
   } else {
-    WindowFullscreen();
+    Window.Fullscreen();
   }
   await checkFullscreenStatus();
 };
 
 const updateWindowState = async () => {
   await checkFullscreenStatus();
-  windowIsMaximised.value = await WindowIsMaximised();
+  windowIsMaximised.value = await Window.IsMaximised();
 };
 
 onMounted(async () => {
   isDarwin.value = await IsDarwin();
   await updateWindowState();
-  EventsOn('window:state-changed', updateWindowState);
+  Events.On('window:state-changed', updateWindowState);
   window.addEventListener('resize', updateWindowState);
 });
 
 onUnmounted(() => {
-  EventsOff('window:state-changed');
+  Events.Off('window:state-changed');
   window.removeEventListener('resize', updateWindowState);
 });
 </script>

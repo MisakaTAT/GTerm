@@ -3,19 +3,18 @@ package services
 import (
 	"github.com/MisakaTAT/GTerm/backend/dal/model"
 	"github.com/MisakaTAT/GTerm/backend/dal/query"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/pkg/exec"
 	"github.com/MisakaTAT/GTerm/backend/pkg/metadata"
 	commonssh "github.com/MisakaTAT/GTerm/backend/pkg/ssh"
 	"github.com/google/wire"
 	"go.uber.org/zap"
+	"log/slog"
 )
 
 var MetadataSrvSet = wire.NewSet(wire.Struct(new(MetadataSrv), "*"))
 
 type MetadataSrv struct {
-	Logger initialize.Logger
-	Query  *query.Query
+	Query *query.Query
 }
 
 func (s *MetadataSrv) UpdateByConnection(conn *model.Connection) {
@@ -31,9 +30,9 @@ func (s *MetadataSrv) UpdateByConnection(conn *model.Connection) {
 		Passphrase:       conn.Credential.Passphrase,
 		TrustUnknownHost: true,
 	}
-	client, err := exec.NewExec(config, s.Logger)
+	client, err := exec.NewExec(config)
 	if err != nil {
-		s.Logger.Error("failed to create ssh client", zap.Error(err))
+		slog.Error("failed to create ssh client", zap.Error(err))
 		return
 	}
 	defer func() {
@@ -42,7 +41,7 @@ func (s *MetadataSrv) UpdateByConnection(conn *model.Connection) {
 
 	meta, err := t.Where(t.ConnectionID.Eq(conn.ID)).FirstOrInit()
 	if err != nil {
-		s.Logger.Error("failed to get metadata", zap.Error(err))
+		slog.Error("failed to get metadata", zap.Error(err))
 		return
 	}
 
@@ -53,6 +52,6 @@ func (s *MetadataSrv) UpdateByConnection(conn *model.Connection) {
 	}
 
 	if err = t.Save(meta); err != nil {
-		s.Logger.Error("failed to update metadata", zap.Error(err))
+		slog.Error("failed to update metadata", zap.Error(err))
 	}
 }

@@ -26,8 +26,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { model } from '@wailsApp/go/models';
-import { CreateGroup, UpdateGroup } from '@wailsApp/go/services/GroupSrv';
+import type { Group } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/dal/model';
+import { CreateGroup, UpdateGroup } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/groupsrv';
 import type { FormInst, FormRules } from 'naive-ui';
 import { NForm, NFormItem, NInput, NModal } from 'naive-ui';
 import { computed, onMounted, onUpdated, ref } from 'vue';
@@ -37,7 +37,7 @@ import { useCall } from '@/utils/call';
 const props = defineProps<{
   show: boolean;
   isEdit: boolean;
-  group?: model.Group;
+  group?: Group;
 }>();
 const emit = defineEmits<{
   (e: 'update:show', value: boolean): void;
@@ -52,15 +52,15 @@ const visible = computed({
   set: value => emit('update:show', value),
 });
 
-const defaultGroup: Partial<model.Group> = {
+const defaultGroup: Partial<Group> = {
   name: '',
 };
 
-function createGroupObject(): model.Group {
-  return { ...defaultGroup } as model.Group;
+function createGroupObject(): Group {
+  return { ...defaultGroup } as Group;
 }
 
-const formValue = ref<model.Group>(createGroupObject());
+const formValue = ref<Group>(createGroupObject());
 
 const rules: FormRules = {
   name: {
@@ -72,7 +72,7 @@ const rules: FormRules = {
 
 const initModalData = () => {
   if (props.group) {
-    formValue.value = { ...props.group } as model.Group;
+    formValue.value = { ...props.group } as Group;
   } else {
     formValue.value = createGroupObject();
   }

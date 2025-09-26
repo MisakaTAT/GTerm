@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 import vue from '@vitejs/plugin-vue';
-import { defineConfig } from 'vite';
-import Components from 'unplugin-vue-components/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
+import Components from 'unplugin-vue-components/vite';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [
@@ -37,7 +37,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
-      '@wailsApp': resolve(__dirname, 'wailsjs'),
+      '@wailsApp': resolve(__dirname, 'bindings'),
     },
   },
 });

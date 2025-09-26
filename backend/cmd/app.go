@@ -1,23 +1,17 @@
 package cmd
 
 import (
-	"context"
-	"net/http"
-
-	"github.com/wailsapp/wails/v2/pkg/logger"
-
 	"github.com/MisakaTAT/GTerm/backend/enums"
 	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/services"
 	"github.com/google/wire"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var AppSet = wire.NewSet(wire.Struct(new(App), "*"))
 
 type App struct {
-	AppContext       *initialize.AppContext
 	HTTPListenerPort *initialize.HTTPListenerPort
-	Logger           initialize.Logger
 	TerminalSrv      *services.TerminalSrv
 	PreferencesSrv   *services.PreferencesSrv
 	GroupSrv         *services.GroupSrv
@@ -28,24 +22,15 @@ type App struct {
 	FileTransferSrv  *services.FileTransferSrv
 }
 
-func (a *App) Startup(ctx context.Context) {
-	a.AppContext.SetContext(ctx)
-
-	if log, ok := a.Logger.(*initialize.LoggerWrapper); ok {
-		log.SetLogLevel(logger.DEBUG)
-	}
-
-	http.Handle("/ws/terminal", http.HandlerFunc(a.WebsocketSrv.TerminalHandle))
-}
-
-func (a *App) Bind() (bd []any) {
-	bd = append(bd, a.TerminalSrv)
-	bd = append(bd, a.PreferencesSrv)
-	bd = append(bd, a.GroupSrv)
-	bd = append(bd, a.ConnectionSrv)
-	bd = append(bd, a.MetadataSrv)
-	bd = append(bd, a.CredentialSrv)
-	bd = append(bd, a.FileTransferSrv)
+func (a *App) Services() (servers []application.Service) {
+	servers = append(servers, application.NewService(a.TerminalSrv))
+	servers = append(servers, application.NewService(a.PreferencesSrv))
+	servers = append(servers, application.NewService(a.GroupSrv))
+	servers = append(servers, application.NewService(a.ConnectionSrv))
+	servers = append(servers, application.NewService(a.MetadataSrv))
+	servers = append(servers, application.NewService(a.CredentialSrv))
+	servers = append(servers, application.NewService(a.WebsocketSrv))
+	servers = append(servers, application.NewService(a.FileTransferSrv))
 	return
 }
 

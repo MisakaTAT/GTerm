@@ -1,5 +1,3 @@
-import { LogWarning } from '@wailsApp/runtime/runtime';
-
 export interface XTermTheme {
   name: string;
   foreground: string;
@@ -67,7 +65,7 @@ export const loadTheme = async (themeName: string): Promise<XTermTheme> => {
 
   const module = themeModules[themeName];
   if (!module) {
-    LogWarning(`Theme ${themeName} not found in themeModules`);
+    console.warn(`Theme ${themeName} not found in themeModules`);
     return defaultTheme;
   }
 

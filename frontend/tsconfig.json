@@ -9,7 +9,7 @@
     "moduleResolution": "Node",
     "paths": {
       "@/*": ["src/*"],
-      "@wailsApp/*": ["wailsjs/*"]
+      "@wailsApp/*": ["bindings/*"]
     },
     "resolveJsonModule": true,
     "strict": true,

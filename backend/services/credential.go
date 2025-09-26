@@ -4,7 +4,6 @@ import (
 	"github.com/MisakaTAT/GTerm/backend/consts/messages"
 	"github.com/MisakaTAT/GTerm/backend/dal/model"
 	"github.com/MisakaTAT/GTerm/backend/dal/query"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/utils/resp"
 	"github.com/google/wire"
 )
@@ -12,8 +11,7 @@ import (
 var CredentialSrvSet = wire.NewSet(wire.Struct(new(CredentialSrv), "*"))
 
 type CredentialSrv struct {
-	Logger initialize.Logger
-	Query  *query.Query
+	Query *query.Query
 }
 
 func (s *CredentialSrv) CreateCredential(cred *model.Credential) *resp.Resp {

@@ -27,8 +27,8 @@
 </template>
 
 <script setup lang="ts">
-import { Copyright, Version, VersionURL } from '@wailsApp/go/services/PreferencesSrv';
-import { BrowserOpenURL } from '@wailsApp/runtime';
+import { Copyright, Version, VersionURL } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/preferencessrv';
+import { Browser } from '@wailsio/runtime';
 import { NAvatar, NDivider, NModal, NSpace, useThemeVars } from 'naive-ui';
 import iconUrl from '@/assets/images/icon.png';
 import { useDialogStore } from '@/stores/dialog';
@@ -47,15 +47,15 @@ const dialogStore = useDialogStore();
 const themeVars = useThemeVars();
 
 const onOpenVersionURL = () => {
-  BrowserOpenURL(versionUrl.value);
+  Browser.OpenURL(versionUrl.value);
 };
 
 const onOpenSource = () => {
-  BrowserOpenURL('https://github.com/MisakaTAT/GTerm');
+  Browser.OpenURL('https://github.com/MisakaTAT/GTerm');
 };
 
 const onOpenWebsite = () => {
-  BrowserOpenURL('https://github.com/MisakaTAT');
+  Browser.OpenURL('https://github.com/MisakaTAT');
 };
 </script>
 

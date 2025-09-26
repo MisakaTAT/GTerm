@@ -4,14 +4,16 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite && pnpm run prettier",
-    "build": "vue-tsc --noEmit && vite build && pnpm run prettier",
-    "preview": "vite preview && pnpm run prettier",
+    "dev": "vite",
+    "build:dev": "vue-tsc --noEmit && vite build --minify false --mode development",
+    "build": "vue-tsc && vite build --mode production",
+    "preview": "vite preview",
     "prettier": "prettier --write 'src/**/*.{ts,js,vue,html,json}'",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix"
   },
   "dependencies": {
+    "@wailsio/runtime": "^3.0.0-alpha.69",
     "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",

@@ -4,7 +4,6 @@ import (
 	"github.com/MisakaTAT/GTerm/backend/consts/messages"
 	"github.com/MisakaTAT/GTerm/backend/dal/model"
 	"github.com/MisakaTAT/GTerm/backend/dal/query"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/utils/resp"
 	"github.com/google/uuid"
 	"github.com/google/wire"
@@ -13,8 +12,7 @@ import (
 var ConnectionSrvSet = wire.NewSet(wire.Struct(new(ConnectionSrv), "*"))
 
 type ConnectionSrv struct {
-	Logger initialize.Logger
-	Query  *query.Query
+	Query *query.Query
 }
 
 func (s *ConnectionSrv) CreateConnection(conn *model.Connection) *resp.Resp {

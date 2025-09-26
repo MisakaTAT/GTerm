@@ -3,12 +3,12 @@ package sftp
 import (
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/pkg/exec"
 	commonssh "github.com/MisakaTAT/GTerm/backend/pkg/ssh"
 	"github.com/MisakaTAT/GTerm/backend/types"
@@ -18,7 +18,6 @@ import (
 )
 
 type Handler struct {
-	Logger           initialize.Logger
 	SSHClient        *ssh.Client
 	SFTPClient       *sftp.Client
 	IsConnected      bool
@@ -28,11 +27,10 @@ type Handler struct {
 	execAdapter      *exec.Adapter
 }
 
-func NewSFTPHandler(logger initialize.Logger) *Handler {
+func NewSFTPHandler() *Handler {
 	return &Handler{
-		Logger:           logger,
 		IsConnected:      false,
-		PermissionsCache: NewPermissionsCache(logger),
+		PermissionsCache: NewPermissionsCache(),
 	}
 }
 
@@ -41,7 +39,7 @@ func (h *Handler) Connect(conf *commonssh.Config) error {
 		return errors.New("already connected to SFTP server")
 	}
 
-	client, err := commonssh.NewSSHClient(conf, h.Logger)
+	client, err := commonssh.NewSSHClient(conf)
 	if err != nil {
 		return err
 	}
@@ -62,7 +60,7 @@ func (h *Handler) Connect(conf *commonssh.Config) error {
 
 	homeDir, err := h.GetHomeDirectory()
 	if err != nil {
-		h.Logger.Warn("Failed to get home directory: %v, using / as default", err)
+		slog.Warn("Failed to get home directory: %v, using / as default", err)
 		h.HomeDir = "/"
 	} else {
 		h.HomeDir = homeDir
@@ -222,14 +220,14 @@ func (h *Handler) GetRemoteFileSize(path string) (int64, error) {
 func (h *Handler) GetHomeDirectory() (string, error) {
 	result := h.execAdapter.Run("pwd")
 	if !result.Success() {
-		h.Logger.Error("Failed to execute pwd command: %v", result.Error())
+		slog.Error("Failed to execute pwd command: %v", result.Error())
 	}
 
 	homeDir := result.Unwrap()
 	if homeDir == "" {
 		result = h.execAdapter.Run("echo $HOME")
 		if !result.Success() {
-			h.Logger.Error("Failed to get HOME environment variable: %v", result.Error())
+			slog.Error("Failed to get HOME environment variable: %v", result.Error())
 		}
 		homeDir = result.Unwrap()
 	}

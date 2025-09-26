@@ -28,11 +28,8 @@
             <div class="credential-item">
               <NThing>
                 <template #avatar>
-                  <div
-                    class="credential-type"
-                    :class="v.authMethod === enums.AuthMethod.PASSWORD ? 'success' : 'warning'"
-                  >
-                    <Icon :icon="v.authMethod === enums.AuthMethod.PASSWORD ? 'ph:password' : 'ph:key'" />
+                  <div class="credential-type" :class="v.authMethod === AuthMethod.Password ? 'success' : 'warning'">
+                    <Icon :icon="v.authMethod === AuthMethod.Password ? 'ph:password' : 'ph:key'" />
                   </div>
                 </template>
                 <template #header>
@@ -58,12 +55,12 @@
                   <template #trigger>
                     <NButton circle text @click="handleCopy(v)">
                       <template #icon>
-                        <Icon :icon="v.authMethod === enums.AuthMethod.PASSWORD ? 'ph:copy' : 'ph:file-text'" />
+                        <Icon :icon="v.authMethod === AuthMethod.Password ? 'ph:copy' : 'ph:file-text'" />
                       </template>
                     </NButton>
                   </template>
                   {{
-                    v.authMethod === enums.AuthMethod.PASSWORD
+                    v.authMethod === AuthMethod.Password
                       ? $t('frontend.credential.actions.copyPassword')
                       : $t('frontend.credential.actions.viewKey')
                   }}
@@ -107,9 +104,9 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import type { model } from '@wailsApp/go/models';
-import { enums } from '@wailsApp/go/models';
-import { DeleteCredential, ListCredential } from '@wailsApp/go/services/CredentialSrv';
+import type { Credential } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/dal/model/models';
+import { AuthMethod } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums/models';
+import { DeleteCredential, ListCredential } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/credentialsrv';
 import dayjs from 'dayjs';
 import {
   NButton,
@@ -135,8 +132,8 @@ const showModal = ref(false);
 const isEdit = ref(false);
 const credentialId = ref<number>(0);
 
-const handleCopy = async (credential: model.Credential) => {
-  if (credential.authMethod === enums.AuthMethod.PASSWORD) {
+const handleCopy = async (credential: Credential) => {
+  if (credential.authMethod === AuthMethod.Password) {
     try {
       await navigator.clipboard.writeText(credential.password);
       message.success(t('frontend.credential.messages.passwordCopied'));
@@ -146,13 +143,13 @@ const handleCopy = async (credential: model.Credential) => {
   }
 };
 
-const handleEdit = (credential: model.Credential) => {
+const handleEdit = (credential: Credential) => {
   isEdit.value = true;
   credentialId.value = credential.id;
   showModal.value = true;
 };
 
-const creds = ref<model.Credential[]>();
+const creds = ref<Credential[]>();
 
 const fetchCredentials = async () => {
   const result = await call(ListCredential);
@@ -162,7 +159,7 @@ const fetchCredentials = async () => {
   return result.data;
 };
 
-const handleDelete = async (credential: model.Credential) => {
+const handleDelete = async (credential: Credential) => {
   const result = await call(DeleteCredential, {
     args: [credential.id],
   });

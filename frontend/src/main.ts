@@ -1,5 +1,4 @@
 import '@/styles/basic.less';
-import { LogInfo } from '@wailsApp/runtime/runtime';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import router from '@/router';
@@ -14,4 +13,4 @@ async function setupApp() {
   app.mount('#app');
 }
 
-setupApp().then(() => LogInfo('App is ready'));
+setupApp().then(() => console.info('App is ready'));

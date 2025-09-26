@@ -126,10 +126,10 @@
               </div>
               <div class="card-info">
                 <div class="conn-name">{{ conn.label }}</div>
-                <div v-if="conn.connProtocol === enums.ConnProtocol.SSH" class="conn-info">
+                <div v-if="conn.connProtocol === ConnProtocol.SSH" class="conn-info">
                   {{ conn.credential?.username }}@{{ conn.host }}
                 </div>
-                <div v-if="conn.connProtocol === enums.ConnProtocol.SERIAL" class="conn-info">
+                <div v-if="conn.connProtocol === ConnProtocol.Serial" class="conn-info">
                   {{ conn.serialPort }}
                 </div>
               </div>
@@ -196,10 +196,10 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import type { model } from '@wailsApp/go/models';
-import { enums } from '@wailsApp/go/models';
-import { DeleteConnection, ListConnection } from '@wailsApp/go/services/ConnectionSrv';
-import { DeleteGroup, ListGroup } from '@wailsApp/go/services/GroupSrv';
+import type { Connection, Group } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/dal/model';
+import { ConnProtocol } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
+import { DeleteConnection, ListConnection } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/connectionsrv';
+import { DeleteGroup, ListGroup } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/groupsrv';
 import { NBadge, NButton, NDropdown, NInput, NResult, NTag, NTooltip, useDialog, useThemeVars } from 'naive-ui';
 import type { DropdownOption } from 'naive-ui';
 import { computed, h, onMounted, onUnmounted, ref } from 'vue';
@@ -215,9 +215,9 @@ const connStore = useConnectionStore();
 const { t } = useI18n();
 const { call } = useCall();
 
-const groups = ref<model.Group[]>();
-const conns = ref<model.Connection[]>();
-const selectedGroup = ref<model.Group | null>(null);
+const groups = ref<Group[]>();
+const conns = ref<Connection[]>();
+const selectedGroup = ref<Group | null>(null);
 
 const showDropdown = ref(false);
 const dropdownX = ref(0);
@@ -234,7 +234,7 @@ const showGroupModal = ref(false);
 const isEditConn = ref(false);
 const isEditGroup = ref(false);
 const connectionId = ref<number>(0);
-const editGroup = ref<model.Group | undefined>(undefined);
+const editGroup = ref<Group | undefined>(undefined);
 
 const currentContextNode = ref<any>(null);
 
@@ -279,7 +279,7 @@ const filteredConns = computed(() => {
   return conns.value?.filter(conn => conn.groupID === selectedGroup.value?.id) || [];
 });
 
-const toTerminal = (conn: model.Connection) => {
+const toTerminal = (conn: Connection) => {
   const connection = {
     id: Date.now(),
     connId: conn.id,
@@ -308,7 +308,7 @@ const fetchData = async () => {
   conns.value = connsData;
 };
 
-const handleEditConn = (conn: model.Connection) => {
+const handleEditConn = (conn: Connection) => {
   isEditConn.value = true;
   connectionId.value = conn.id;
   showConnModal.value = true;
@@ -380,7 +380,7 @@ const isTextLogo = (vendor: string) => {
   return textLogoVendors.includes(vendor.toLowerCase());
 };
 
-const getSessionIcon = (conn: model.Connection) => {
+const getSessionIcon = (conn: Connection) => {
   const vendor = conn.metadata?.vendor || '';
   if (vendor && vendor in vendorIconMap) {
     return {
@@ -407,26 +407,26 @@ const getSessionIcon = (conn: model.Connection) => {
   };
 };
 
-const getConnCount = (conn: model.Connection) => {
+const getConnCount = (conn: Connection) => {
   return connStore.connections.filter(c => c.host === conn.host && !c.errorCausedClosed).length;
 };
 
-const getErrorConnCount = (conn: model.Connection) => {
+const getErrorConnCount = (conn: Connection) => {
   return connStore.connections.filter(c => c.host === conn.host && c.errorCausedClosed).length;
 };
 
-const getProtocolIcon = (conn: model.Connection) => {
+const getProtocolIcon = (conn: Connection) => {
   const protocol = conn.connProtocol;
   switch (protocol) {
-    case enums.ConnProtocol.SSH:
+    case ConnProtocol.SSH:
       return 'ph:terminal-duotone';
-    case enums.ConnProtocol.TELNET:
+    case ConnProtocol.Telnet:
       return 'ph:broadcast-duotone';
-    case enums.ConnProtocol.RDP:
+    case ConnProtocol.RDP:
       return 'ph:desktop-duotone';
-    case enums.ConnProtocol.VNC:
+    case ConnProtocol.VNC:
       return 'ph:monitor-duotone';
-    case enums.ConnProtocol.SERIAL:
+    case ConnProtocol.Serial:
       return 'ph:plug-duotone';
     default:
       return 'ph:gconn-duotone';
@@ -501,15 +501,15 @@ const filteredGroups = computed(() => {
   return groups.value?.filter(group => group.name.toLowerCase().includes(searchText.value.toLowerCase())) || [];
 });
 
-const getGroupConnCount = (group: model.Group) => {
+const getGroupConnCount = (group: Group) => {
   return conns.value?.filter(conn => conn.groupID === group.id).length || 0;
 };
 
-const handleSelectConn = (conn: model.Connection) => {
+const handleSelectConn = (conn: Connection) => {
   toTerminal(conn);
 };
 
-const handleSelectGroup = (group: model.Group | null) => {
+const handleSelectGroup = (group: Group | null) => {
   if (selectedGroup.value?.id === group?.id) {
     selectedGroup.value = null;
   } else {
@@ -517,7 +517,7 @@ const handleSelectGroup = (group: model.Group | null) => {
   }
 };
 
-const handleConnContextMenu = (event: MouseEvent, conn: model.Connection) => {
+const handleConnContextMenu = (event: MouseEvent, conn: Connection) => {
   event.preventDefault();
   dropdownX.value = event.clientX;
   dropdownY.value = event.clientY;
@@ -526,7 +526,7 @@ const handleConnContextMenu = (event: MouseEvent, conn: model.Connection) => {
   updateDropdownOptions('conn');
 };
 
-const handleGroupContextMenu = (event: MouseEvent, group: model.Group) => {
+const handleGroupContextMenu = (event: MouseEvent, group: Group) => {
   event.preventDefault();
   dropdownX.value = event.clientX;
   dropdownY.value = event.clientY;

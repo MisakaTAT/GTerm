@@ -110,7 +110,7 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import { BrowserOpenURL } from '@wailsApp/runtime';
+import { Browser } from '@wailsio/runtime';
 import { NDropdown, NIcon, NTooltip, useThemeVars } from 'naive-ui';
 import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -159,7 +159,7 @@ const toggleTheme = () => {
 };
 
 const openGithub = () => {
-  BrowserOpenURL('https://github.com/DLinkProjects/DLink');
+  Browser.OpenURL('https://github.com/DLinkProjects/DLink');
 };
 </script>
 

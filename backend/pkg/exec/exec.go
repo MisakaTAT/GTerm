@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"strings"
 	"time"
 
@@ -142,6 +141,6 @@ func (r *Result) String() string {
 	return fmt.Sprintf("error: %v", r.err)
 }
 
-func NewExec(conf *commonssh.Config, logger initialize.Logger) (*ssh.Client, error) {
-	return commonssh.NewSSHClient(conf, logger)
+func NewExec(conf *commonssh.Config) (*ssh.Client, error) {
+	return commonssh.NewSSHClient(conf)
 }

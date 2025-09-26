@@ -3,6 +3,7 @@ package ssh
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/MisakaTAT/GTerm/backend/types"
@@ -12,7 +13,6 @@ import (
 	"path/filepath"
 
 	"github.com/MisakaTAT/GTerm/backend/enums"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
 )
@@ -34,15 +34,12 @@ type Config struct {
 	PublicKeyAlgorithms []string
 }
 
-func NewSSHClient(c *Config, logger initialize.Logger) (*ssh.Client, error) {
+func NewSSHClient(c *Config) (*ssh.Client, error) {
 	if c == nil {
 		return nil, errors.New("config is not set")
 	}
-	if logger == nil {
-		return nil, errors.New("logger is not set")
-	}
 
-	logger.Info("Connecting to SSH server %s:%d", c.Host, c.Port)
+	slog.Info("Connecting to SSH server %s:%d", c.Host, c.Port)
 	host := fmt.Sprintf("%s:%d", c.Host, c.Port)
 
 	var auth []ssh.AuthMethod
@@ -56,7 +53,7 @@ func NewSSHClient(c *Config, logger initialize.Logger) (*ssh.Client, error) {
 			}
 			return answers, nil
 		}))
-		logger.Info("Using password authentication")
+		slog.Info("Using password authentication")
 	case enums.PrivateKey:
 		var signer ssh.Signer
 		var err error
@@ -68,12 +65,12 @@ func NewSSHClient(c *Config, logger initialize.Logger) (*ssh.Client, error) {
 		}
 
 		if err != nil {
-			logger.Error("Failed to parse private key: %v", err)
+			slog.Error("Failed to parse private key: %v", err)
 			return nil, err
 		}
 
 		auth = append(auth, ssh.PublicKeys(signer))
-		logger.Info("Using private key authentication")
+		slog.Info("Using private key authentication")
 	default:
 		return nil, errors.New("unsupported authentication method")
 	}
@@ -83,19 +80,19 @@ func NewSSHClient(c *Config, logger initialize.Logger) (*ssh.Client, error) {
 
 	if c.TrustUnknownHost {
 		hostKeyCallback = ssh.InsecureIgnoreHostKey()
-		logger.Warn("Configured to trust all unknown hosts, this may pose a security risk")
+		slog.Warn("Configured to trust all unknown hosts, this may pose a security risk")
 	} else {
 		knownHostsFile := filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")
-		logger.Debug("Using known_hosts file: %s", knownHostsFile)
+		slog.Debug("Using known_hosts file: %s", knownHostsFile)
 
 		db, err := knownhosts.NewDB(knownHostsFile)
 		if err != nil {
-			logger.Error("Failed to load known_hosts database: %v", err)
+			slog.Error("Failed to load known_hosts database: %v", err)
 			hostKeyCallback = ssh.InsecureIgnoreHostKey()
 		} else {
 			hostKeyCallback = db.HostKeyCallback()
 			hostKeyAlgorithms = db.HostKeyAlgorithms(host)
-			logger.Info("Using known_hosts for host key verification")
+			slog.Info("Using known_hosts for host key verification")
 		}
 	}
 
@@ -113,10 +110,10 @@ func NewSSHClient(c *Config, logger initialize.Logger) (*ssh.Client, error) {
 
 	if len(hostKeyAlgorithms) > 0 {
 		clientConfig.HostKeyAlgorithms = hostKeyAlgorithms
-		logger.Info("Using host key algorithms from known_hosts: %v", hostKeyAlgorithms)
+		slog.Info("Using host key algorithms from known_hosts: %v", hostKeyAlgorithms)
 	} else if len(c.HostKeyAlgorithms) > 0 {
 		clientConfig.HostKeyAlgorithms = c.HostKeyAlgorithms
-		logger.Info("Using custom host key algorithms: %v", c.HostKeyAlgorithms)
+		slog.Info("Using custom host key algorithms: %v", c.HostKeyAlgorithms)
 	} else {
 		clientConfig.HostKeyAlgorithms = []string{
 			ssh.KeyAlgoED25519,
@@ -127,52 +124,52 @@ func NewSSHClient(c *Config, logger initialize.Logger) (*ssh.Client, error) {
 			ssh.KeyAlgoRSA,
 			ssh.KeyAlgoDSA,
 		}
-		logger.Info("Using default host key algorithm list")
+		slog.Info("Using default host key algorithm list")
 	}
 
 	if len(c.Ciphers) > 0 {
 		clientConfig.Ciphers = c.Ciphers
-		logger.Info("Using custom cipher list: %v", c.Ciphers)
+		slog.Info("Using custom cipher list: %v", c.Ciphers)
 	}
 
 	if len(c.KeyExchanges) > 0 {
 		clientConfig.KeyExchanges = c.KeyExchanges
-		logger.Info("Using custom key exchange list: %v", c.KeyExchanges)
+		slog.Info("Using custom key exchange list: %v", c.KeyExchanges)
 	}
 
 	if len(c.MACs) > 0 {
 		clientConfig.MACs = c.MACs
-		logger.Info("Using custom MAC list: %v", c.MACs)
+		slog.Info("Using custom MAC list: %v", c.MACs)
 	}
 
-	logger.Info("Starting SSH connection to server, %s@%s", c.User, host)
+	slog.Info("Starting SSH connection to server, %s@%s", c.User, host)
 
 	client, err := ssh.Dial("tcp", host, clientConfig)
 	if err != nil {
 		if knownhosts.IsHostUnknown(err) {
-			logger.Info("Unknown host, attempting to get host key: %s", host)
-			key, keyErr := getHostKey(c, logger)
+			slog.Info("Unknown host, attempting to get host key: %s", host)
+			key, keyErr := getHostKey(c)
 			if keyErr == nil && key != nil {
 				fingerprint := ssh.FingerprintSHA256(key)
-				logger.Info("Successfully obtained unknown host key, fingerprint: %s", fingerprint)
+				slog.Info("Successfully obtained unknown host key, fingerprint: %s", fingerprint)
 				return nil, &types.FingerprintError{
 					Host:        host,
 					Fingerprint: fingerprint,
 				}
 			}
 		} else if knownhosts.IsHostKeyChanged(err) {
-			logger.Warn("Host key has changed! This may indicate a MitM attack, host: %s", host)
+			slog.Warn("Host key has changed! This may indicate a MitM attack, host: %s", host)
 		}
-		logger.Error("SSH connection failed: %v", err)
+		slog.Error("SSH connection failed: %v", err)
 		return nil, err
 	}
 
-	logger.Info("SSH connection successful, %s@%s", c.User, host)
+	slog.Info("SSH connection successful, %s@%s", c.User, host)
 
 	return client, nil
 }
 
-func getHostKey(c *Config, logger initialize.Logger) (hostKey ssh.PublicKey, err error) {
+func getHostKey(c *Config) (hostKey ssh.PublicKey, err error) {
 	host := fmt.Sprintf("%s:%d", c.Host, c.Port)
 
 	timeout := 10 * time.Second
@@ -192,34 +189,34 @@ func getHostKey(c *Config, logger initialize.Logger) (hostKey ssh.PublicKey, err
 	conn, err := ssh.Dial("tcp", host, clientConfig)
 	if err != nil {
 		if hostKey != nil {
-			logger.Info("Successfully obtained host key, fingerprint: %s", ssh.FingerprintSHA256(hostKey))
+			slog.Info("Successfully obtained host key, fingerprint: %s", ssh.FingerprintSHA256(hostKey))
 			return hostKey, nil
 		}
 		return nil, err
 	}
 	defer func(conn *ssh.Client) {
 		if err = conn.Close(); err != nil {
-			logger.Error("Failed to close SSH connection: %v", err)
+			slog.Error("Failed to close SSH connection: %v", err)
 		}
 	}(conn)
 	if hostKey == nil {
 		return nil, errors.New("unable to obtain host key")
 	}
 
-	logger.Info("Successfully obtained host key, fingerprint: %s", ssh.FingerprintSHA256(hostKey))
+	slog.Info("Successfully obtained host key, fingerprint: %s", ssh.FingerprintSHA256(hostKey))
 	return hostKey, nil
 }
 
-func AddFingerprint(conf *Config, host, fingerprint string, logger initialize.Logger) error {
-	logger.Info("Adding host fingerprint, host: %s, fingerprint: %s", host, fingerprint)
+func AddFingerprint(conf *Config, host, fingerprint string) error {
+	slog.Info("Adding host fingerprint, host: %s, fingerprint: %s", host, fingerprint)
 	knownHostsFile := filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")
-	key, err := getHostKey(conf, logger)
+	key, err := getHostKey(conf)
 	if err != nil {
 		return err
 	}
 
 	actualFingerprint := ssh.FingerprintSHA256(key)
-	logger.Info("Comparing fingerprints, expected: %s, actual: %s", fingerprint, actualFingerprint)
+	slog.Info("Comparing fingerprints, expected: %s, actual: %s", fingerprint, actualFingerprint)
 
 	if actualFingerprint != fingerprint {
 		return errors.New("fingerprint mismatch")
@@ -227,7 +224,7 @@ func AddFingerprint(conf *Config, host, fingerprint string, logger initialize.Lo
 
 	f, err := os.OpenFile(knownHostsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-		logger.Error("Failed to open known_hosts file: %v", err)
+		slog.Error("Failed to open known_hosts file: %v", err)
 		return err
 	}
 	defer func(f *os.File) {
@@ -235,9 +232,9 @@ func AddFingerprint(conf *Config, host, fingerprint string, logger initialize.Lo
 	}(f)
 
 	if err = knownhosts.WriteKnownHost(f, host, nil, key); err != nil {
-		logger.Error("Failed to write to known_hosts file: %v", err)
+		slog.Error("Failed to write to known_hosts file: %v", err)
 		return err
 	}
-	logger.Info("Successfully added fingerprint to known_hosts, fingerprint: %s", fingerprint)
+	slog.Info("Successfully added fingerprint to known_hosts, fingerprint: %s", fingerprint)
 	return nil
 }

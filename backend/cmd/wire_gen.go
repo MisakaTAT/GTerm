@@ -14,48 +14,36 @@ import (
 // Injectors from wire.go:
 
 func NewApp() *App {
-	appContext := initialize.InitDefaultContext()
 	httpListenerPort := initialize.InitHTTPServer()
-	logger := initialize.ProvideLogger(appContext)
 	query := initialize.InitDatabase()
 	connectionSrv := &services.ConnectionSrv{
-		Logger: logger,
-		Query:  query,
+		Query: query,
 	}
 	metadataSrv := &services.MetadataSrv{
-		Logger: logger,
-		Query:  query,
+		Query: query,
 	}
 	terminalSrv := &services.TerminalSrv{
-		Logger:           logger,
 		ConnectionSrv:    connectionSrv,
 		MetadataSrv:      metadataSrv,
 		HTTPListenerPort: httpListenerPort,
 	}
-	preferencesSrv := &services.PreferencesSrv{
-		Logger: logger,
-	}
+	preferencesSrv := &services.PreferencesSrv{}
 	groupSrv := &services.GroupSrv{
-		Logger: logger,
-		Query:  query,
+		Query: query,
 	}
 	credentialSrv := &services.CredentialSrv{
-		Logger: logger,
-		Query:  query,
+		Query: query,
 	}
 	websocketSrv := &services.WebsocketSrv{
 		TerminalSrv: terminalSrv,
-		Logger:      logger,
 	}
+	appContext := initialize.InitDefaultContext()
 	fileTransferSrv := &services.FileTransferSrv{
-		Logger:        logger,
 		ConnectionSrv: connectionSrv,
 		AppContext:    appContext,
 	}
 	app := &App{
-		AppContext:       appContext,
 		HTTPListenerPort: httpListenerPort,
-		Logger:           logger,
 		TerminalSrv:      terminalSrv,
 		PreferencesSrv:   preferencesSrv,
 		GroupSrv:         groupSrv,

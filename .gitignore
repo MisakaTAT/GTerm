@@ -5,7 +5,6 @@ frontend/node_modules
 frontend/package-lock.json
 frontend/package.json.md5
 .idea
-frontend/wailsjs
-frontend/pnpm-lock.yaml
+frontend/bindings
 frontend/.idea
 .DS_Store

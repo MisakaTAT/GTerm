@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/MisakaTAT/GTerm/backend/enums"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	commonssh "github.com/MisakaTAT/GTerm/backend/pkg/ssh"
 	"github.com/MisakaTAT/GTerm/backend/pkg/terminal"
 	"github.com/MisakaTAT/GTerm/backend/types"
@@ -24,7 +24,6 @@ type SSH struct {
 	session   *ssh.Session
 	stdinPipe io.WriteCloser
 	writer    *writer
-	logger    initialize.Logger
 }
 
 type writer struct {
@@ -56,19 +55,18 @@ func (w *writer) Reset() {
 	w.buffer.Reset()
 }
 
-func NewSSH(conf *commonssh.Config, ws *websocket.Conn, logger initialize.Logger) *SSH {
+func NewSSH(conf *commonssh.Config, ws *websocket.Conn) *SSH {
 	return &SSH{
 		conf:   conf,
 		ws:     ws,
-		logger: logger,
 		writer: new(writer),
 	}
 }
 
 func (s *SSH) Connect() (*SSH, error) {
 	host := fmt.Sprintf("%s:%d", s.conf.Host, s.conf.Port)
-	s.logger.Info("Attempting to connect SSH, host: %s, port: %d", s.conf.Host, s.conf.Port)
-	client, err := commonssh.NewSSHClient(s.conf, s.logger)
+	slog.Info("Attempting to connect SSH, host: %s, port: %d", s.conf.Host, s.conf.Port)
+	client, err := commonssh.NewSSHClient(s.conf)
 	if err != nil {
 		var fingerprintErr *types.FingerprintError
 		if errors.As(err, &fingerprintErr) {
@@ -77,29 +75,29 @@ func (s *SSH) Connect() (*SSH, error) {
 				Fingerprint: fingerprintErr.Fingerprint,
 			}
 		}
-		s.logger.Error("SSH connection failed: %v", err)
+		slog.Error("SSH connection failed: %v", err)
 		return s, err
 	}
-	s.logger.Info("SSH connection successful, %s@%s", s.conf.User, host)
+	slog.Info("SSH connection successful, %s@%s", s.conf.User, host)
 
-	s.logger.Info("Creating SSH session")
+	slog.Info("Creating SSH session")
 	session, err := client.NewSession()
 	if err != nil {
-		s.logger.Error("Failed to create SSH session: %v", err)
+		slog.Error("Failed to create SSH session: %v", err)
 		return s, err
 	}
 	s.session = session
 
-	s.logger.Debug("Getting session stdin pipe")
+	slog.Debug("Getting session stdin pipe")
 	s.stdinPipe, err = s.session.StdinPipe()
 	if err != nil {
-		s.logger.Error("Failed to get stdin pipe: %v", err)
+		slog.Error("Failed to get stdin pipe: %v", err)
 		return nil, err
 	}
 
 	s.session.Stdout = s.writer
 	s.session.Stderr = s.writer
-	s.logger.Debug("Stdout and stderr configured")
+	slog.Debug("Stdout and stderr configured")
 
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          1,
@@ -108,19 +106,19 @@ func (s *SSH) Connect() (*SSH, error) {
 	}
 
 	// TODO: 支持自定义终端类型
-	s.logger.Debug("Requesting PTY terminal, type: xterm")
+	slog.Debug("Requesting PTY terminal, type: xterm")
 	if err = s.session.RequestPty("xterm", 0, 0, modes); err != nil {
-		s.logger.Error("Failed to request PTY terminal: %v", err)
+		slog.Error("Failed to request PTY terminal: %v", err)
 		return nil, err
 	}
 
-	s.logger.Debug("Starting shell")
+	slog.Debug("Starting shell")
 	if err = s.session.Shell(); err != nil {
-		s.logger.Error("Failed to start shell: %v", err)
+		slog.Error("Failed to start shell: %v", err)
 		return nil, err
 	}
 
-	s.logger.Info("SSH session ready")
+	slog.Info("SSH session ready")
 	return s, nil
 }
 
@@ -130,14 +128,14 @@ func (s *SSH) flushWriter() {
 			Type:    enums.TerminalTypeData,
 			Content: s.writer.String(),
 		}); err != nil {
-			s.logger.Error("failed write data to websocket: %v", err)
+			slog.Error("failed write data to websocket: %v", err)
 		}
 		s.writer.Reset()
 	}
 }
 
 func (s *SSH) Input(quitSignal chan bool) {
-	s.logger.Info("Starting WebSocket input monitoring")
+	slog.Info("Starting WebSocket input monitoring")
 	defer s.setQuit(quitSignal)
 
 	for {
@@ -156,12 +154,12 @@ func (s *SSH) Input(quitSignal chan bool) {
 			case enums.TerminalTypeResize:
 				if msg.Cols > 0 && msg.Rows > 0 {
 					if err = s.session.WindowChange(msg.Rows, msg.Cols); err != nil {
-						s.logger.Error("failed change ssh pty window size: %v", err)
+						slog.Error("failed change ssh pty window size: %v", err)
 					}
 				}
 			case enums.TerminalTypeCMD:
 				if _, err = s.stdinPipe.Write([]byte(msg.Cmd)); err != nil {
-					s.logger.Error("failed write command to stdin pipe: %v", err)
+					slog.Error("failed write command to stdin pipe: %v", err)
 				}
 			}
 		}
@@ -169,7 +167,7 @@ func (s *SSH) Input(quitSignal chan bool) {
 }
 
 func (s *SSH) Output(quitSignal chan bool) {
-	s.logger.Info("Starting WebSocket output")
+	slog.Info("Starting WebSocket output")
 	defer s.setQuit(quitSignal)
 	tick := time.NewTicker(time.Millisecond * time.Duration(5))
 	defer tick.Stop()
@@ -185,7 +183,7 @@ func (s *SSH) Output(quitSignal chan bool) {
 }
 
 func (s *SSH) close() {
-	s.logger.Info("Closing SSH session")
+	slog.Info("Closing SSH session")
 	if s.session != nil {
 		_ = s.session.Close()
 	}

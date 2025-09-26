@@ -27,8 +27,8 @@
           <div class="auth-type-container">
             <NButtonGroup>
               <NButton
-                :type="formValue.authMethod === AuthMethod.PASSWORD ? 'primary' : 'default'"
-                @click="handleAuthTypeChange(AuthMethod.PASSWORD)"
+                :type="formValue.authMethod === AuthMethod.Password ? 'primary' : 'default'"
+                @click="handleAuthTypeChange(AuthMethod.Password)"
               >
                 <template #icon>
                   <Icon icon="ph:password" />
@@ -36,8 +36,8 @@
                 {{ $t('frontend.credentialModal.password') }}
               </NButton>
               <NButton
-                :type="formValue.authMethod === AuthMethod.PRIVATEKEY ? 'primary' : 'default'"
-                @click="handleAuthTypeChange(AuthMethod.PRIVATEKEY)"
+                :type="formValue.authMethod === AuthMethod.PrivateKey ? 'primary' : 'default'"
+                @click="handleAuthTypeChange(AuthMethod.PrivateKey)"
               >
                 <template #icon>
                   <Icon icon="ph:key" />
@@ -57,7 +57,7 @@
           />
         </NFormItem>
 
-        <template v-if="formValue.authMethod === AuthMethod.PASSWORD">
+        <template v-if="formValue.authMethod === AuthMethod.Password">
           <NFormItem path="password" :label="$t('frontend.credentialModal.password')">
             <NInput
               v-model:value="formValue.password"
@@ -70,7 +70,7 @@
           </NFormItem>
         </template>
 
-        <template v-if="formValue.authMethod === AuthMethod.PRIVATEKEY">
+        <template v-if="formValue.authMethod === AuthMethod.PrivateKey">
           <NFormItem path="privateKey" :label="$t('frontend.credentialModal.privateKey')">
             <NInput
               v-model:value="formValue.privateKey"
@@ -98,9 +98,13 @@
 
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue';
-import type { model } from '@wailsApp/go/models';
-import { enums } from '@wailsApp/go/models';
-import { CreateCredential, FindCredentialByID, UpdateCredential } from '@wailsApp/go/services/CredentialSrv';
+import type { Credential } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/dal/model';
+import { AuthMethod } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
+import {
+  CreateCredential,
+  FindCredentialByID,
+  UpdateCredential,
+} from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/credentialsrv';
 import type { FormInst, FormRules } from 'naive-ui';
 import { NButton, NButtonGroup, NForm, NFormItem, NInput, NModal, NScrollbar } from 'naive-ui';
 import { computed, onMounted, onUpdated, ref } from 'vue';
@@ -118,8 +122,6 @@ const emit = defineEmits<{
   (e: 'success'): void;
 }>();
 
-const { AuthMethod } = enums;
-
 const { t } = useI18n();
 const formRef = ref<FormInst | null>(null);
 const { call } = useCall();
@@ -129,24 +131,24 @@ const visible = computed({
   set: value => emit('update:show', value),
 });
 
-const defaultCredential: Partial<model.Credential> = {
+const defaultCredential: Partial<Credential> = {
   label: '',
   username: '',
   password: '',
   privateKey: '',
   passphrase: '',
-  authMethod: AuthMethod.PASSWORD,
+  authMethod: AuthMethod.Password,
 };
 
-function createCredentialObject(): model.Credential {
-  return { ...defaultCredential } as model.Credential;
+function createCredentialObject(): Credential {
+  return { ...defaultCredential } as Credential;
 }
 
-const formValue = ref<model.Credential>(createCredentialObject());
+const formValue = ref<Credential>(createCredentialObject());
 
-const handleAuthTypeChange = (authMethod: enums.AuthMethod) => {
+const handleAuthTypeChange = (authMethod: AuthMethod) => {
   formValue.value.authMethod = authMethod;
-  if (authMethod === AuthMethod.PASSWORD) {
+  if (authMethod === AuthMethod.Password) {
     formValue.value.privateKey = '';
     formValue.value.passphrase = '';
   } else {
@@ -166,12 +168,12 @@ const rules = computed<FormRules>(() => ({
     trigger: 'blur',
   },
   password: {
-    required: formValue.value.authMethod === AuthMethod.PASSWORD,
+    required: formValue.value.authMethod === AuthMethod.Password,
     message: t('frontend.credentialModal.validation.passwordRequired'),
     trigger: 'blur',
   },
   privateKey: {
-    required: formValue.value.authMethod === AuthMethod.PRIVATEKEY,
+    required: formValue.value.authMethod === AuthMethod.PrivateKey,
     message: t('frontend.credentialModal.validation.privateKeyRequired'),
     trigger: 'blur',
   },
@@ -184,7 +186,7 @@ const initModalData = async () => {
     });
 
     if (result.ok) {
-      formValue.value = { ...result.data } as model.Credential;
+      formValue.value = { ...result.data } as Credential;
     } else {
       emit('update:show', false);
     }

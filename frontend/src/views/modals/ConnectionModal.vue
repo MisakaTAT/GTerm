@@ -41,7 +41,7 @@
               />
             </NFormItem>
 
-            <template v-if="formValue.connProtocol === ConnProtocol.SERIAL">
+            <template v-if="formValue.connProtocol === ConnProtocol.Serial">
               <NFormItem path="serialPort" :label="$t('frontend.connModal.serialPort')">
                 <NSelect
                   v-model:value="formValue.serialPort"
@@ -111,7 +111,7 @@
                   <NButtonGroup>
                     <NButton
                       :type="
-                        !formValue.useCommonCredential && formValue.credential?.authMethod === AuthMethod.PASSWORD
+                        !formValue.useCommonCredential && formValue.credential?.authMethod === AuthMethod.Password
                           ? 'primary'
                           : 'default'
                       "
@@ -124,7 +124,7 @@
                     </NButton>
                     <NButton
                       :type="
-                        !formValue.useCommonCredential && formValue.credential?.authMethod === AuthMethod.PRIVATEKEY
+                        !formValue.useCommonCredential && formValue.credential?.authMethod === AuthMethod.PrivateKey
                           ? 'primary'
                           : 'default'
                       "
@@ -170,7 +170,7 @@
                   />
                 </NFormItem>
 
-                <template v-if="formValue.credential!.authMethod === AuthMethod.PASSWORD">
+                <template v-if="formValue.credential!.authMethod === AuthMethod.Password">
                   <NFormItem path="credential.password" :label="$t('frontend.connModal.password')">
                     <NInput
                       v-model:value="formValue.credential!.password"
@@ -183,7 +183,7 @@
                   </NFormItem>
                 </template>
 
-                <template v-if="formValue.credential!.authMethod === AuthMethod.PRIVATEKEY">
+                <template v-if="formValue.credential!.authMethod === AuthMethod.PrivateKey">
                   <NFormItem path="credential.privateKey" :label="$t('frontend.connModal.privateKey')">
                     <NInput
                       v-model:value="formValue.credential!.privateKey"
@@ -475,7 +475,7 @@
             </NForm>
           </template>
 
-          <template v-else-if="formValue.connProtocol === ConnProtocol.SERIAL">
+          <template v-else-if="formValue.connProtocol === ConnProtocol.Serial">
             <NEmpty size="small" :description="$t('frontend.connModal.developing')">
               <template #icon>
                 <Icon icon="ph:code" />
@@ -496,12 +496,16 @@
 
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue';
-import type { model } from '@wailsApp/go/models';
-import { enums } from '@wailsApp/go/models';
-import { CreateConnection, FindConnectionByID, UpdateConnection } from '@wailsApp/go/services/ConnectionSrv';
-import { ListCredential } from '@wailsApp/go/services/CredentialSrv';
-import { ListGroup } from '@wailsApp/go/services/GroupSrv';
-import { SerialPorts } from '@wailsApp/go/services/TerminalSrv';
+import type { Connection, Credential, Group } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/dal/model';
+import { AuthMethod, ConnProtocol } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
+import {
+  CreateConnection,
+  FindConnectionByID,
+  UpdateConnection,
+} from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/connectionsrv';
+import { ListCredential } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/credentialsrv';
+import { ListGroup } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/groupsrv';
+import { SerialPorts } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/terminalsrv';
 import type { FormInst, FormRules } from 'naive-ui';
 import {
   NButton,
@@ -541,8 +545,6 @@ const emit = defineEmits<{
   (e: 'success'): void;
 }>();
 
-const { AuthMethod, ConnProtocol } = enums;
-
 const { t } = useI18n();
 const formRef = ref<FormInst | null>(null);
 const activeTab = ref('basic');
@@ -563,20 +565,20 @@ const CredentialType = {
 
 const connProtocolOptions = [
   { label: ConnProtocol.SSH, value: ConnProtocol.SSH },
-  { label: ConnProtocol.SERIAL, value: ConnProtocol.SERIAL },
+  { label: ConnProtocol.Serial, value: ConnProtocol.Serial },
 ];
 
-const defaultCredential: Partial<model.Credential> = {
+const defaultCredential: Partial<Credential> = {
   label: '',
   username: '',
   password: '',
   privateKey: '',
   passphrase: '',
   isCommonCredential: false,
-  authMethod: AuthMethod.PASSWORD,
+  authMethod: AuthMethod.Password,
 };
 
-const defaultConnection: Partial<model.Connection> = {
+const defaultConnection: Partial<Connection> = {
   label: '',
   host: '',
   port: 22,
@@ -671,46 +673,46 @@ const defaultConnection: Partial<model.Connection> = {
 };
 
 const tempCachedCredentials = ref<{
-  password: model.Credential;
-  privateKey: model.Credential;
+  password: Credential;
+  privateKey: Credential;
 }>({
-  password: createCredentialObject(AuthMethod.PASSWORD),
-  privateKey: createCredentialObject(AuthMethod.PRIVATEKEY),
+  password: createCredentialObject(AuthMethod.Password),
+  privateKey: createCredentialObject(AuthMethod.PrivateKey),
 });
 
 const groupOptions = ref<SelectMixedOption[]>([]);
 const serialPortsOptions = ref<SelectMixedOption[]>([]);
 const credentialOptions = ref<SelectMixedOption[]>([]);
 
-const formValue = ref<model.Connection>(createConnectionObject());
+const formValue = ref<Connection>(createConnectionObject());
 
-function createCredentialObject(authMethod: enums.AuthMethod): model.Credential {
+function createCredentialObject(authMethod: AuthMethod): Credential {
   return {
     ...defaultCredential,
     authMethod,
-  } as model.Credential;
+  } as Credential;
 }
 
-function createConnectionObject(isCommon = false): model.Connection {
+function createConnectionObject(isCommon = false): Connection {
   const conn = {
     ...defaultConnection,
     useCommonCredential: isCommon,
-  } as model.Connection;
+  } as Connection;
 
   if (!isCommon) {
-    conn.credential = createCredentialObject(AuthMethod.PASSWORD);
+    conn.credential = createCredentialObject(AuthMethod.Password);
   }
   return conn;
 }
 
-function prepareConnectionForEdit(connection: model.Connection): model.Connection {
-  const conn = { ...connection } as model.Connection;
+function prepareConnectionForEdit(connection: Connection): Connection {
+  const conn = { ...connection } as Connection;
 
   if (conn.credential && !conn.useCommonCredential) {
-    if (conn.credential.authMethod === AuthMethod.PASSWORD) {
-      tempCachedCredentials.value.password = { ...conn.credential } as model.Credential;
-    } else if (conn.credential.authMethod === AuthMethod.PRIVATEKEY) {
-      tempCachedCredentials.value.privateKey = { ...conn.credential } as model.Credential;
+    if (conn.credential.authMethod === AuthMethod.Password) {
+      tempCachedCredentials.value.password = { ...conn.credential } as Credential;
+    } else if (conn.credential.authMethod === AuthMethod.PrivateKey) {
+      tempCachedCredentials.value.privateKey = { ...conn.credential } as Credential;
     }
   }
 
@@ -774,30 +776,30 @@ const rules = computed<FormRules>(() => ({
     },
   },
   serialPort: {
-    required: formValue.value.connProtocol === ConnProtocol.SERIAL,
+    required: formValue.value.connProtocol === ConnProtocol.Serial,
     message: t('frontend.connModal.validation.serialPortRequired'),
     trigger: ['blur', 'change'],
   },
   baudRate: {
-    required: formValue.value.connProtocol === ConnProtocol.SERIAL,
+    required: formValue.value.connProtocol === ConnProtocol.Serial,
     type: 'number',
     message: t('frontend.connModal.validation.baudRateRequired'),
     trigger: ['blur', 'change'],
   },
   dataBits: {
-    required: formValue.value.connProtocol === ConnProtocol.SERIAL,
+    required: formValue.value.connProtocol === ConnProtocol.Serial,
     type: 'number',
     message: t('frontend.connModal.validation.dataBitsRequired'),
     trigger: ['blur', 'change'],
   },
   stopBits: {
-    required: formValue.value.connProtocol === ConnProtocol.SERIAL,
+    required: formValue.value.connProtocol === ConnProtocol.Serial,
     type: 'number',
     message: t('frontend.connModal.validation.stopBitsRequired'),
     trigger: ['blur', 'change'],
   },
   parity: {
-    required: formValue.value.connProtocol === ConnProtocol.SERIAL,
+    required: formValue.value.connProtocol === ConnProtocol.Serial,
     type: 'number',
     message: t('frontend.connModal.validation.parityRequired'),
     trigger: ['blur', 'change'],
@@ -808,12 +810,12 @@ const rules = computed<FormRules>(() => ({
     trigger: 'blur',
   },
   'credential.password': {
-    required: !formValue.value.useCommonCredential && formValue.value.credential?.authMethod === AuthMethod.PASSWORD,
+    required: !formValue.value.useCommonCredential && formValue.value.credential?.authMethod === AuthMethod.Password,
     message: t('frontend.connModal.validation.passwordRequired'),
     trigger: 'blur',
   },
   'credential.privateKey': {
-    required: !formValue.value.useCommonCredential && formValue.value.credential?.authMethod === AuthMethod.PRIVATEKEY,
+    required: !formValue.value.useCommonCredential && formValue.value.credential?.authMethod === AuthMethod.PrivateKey,
     message: t('frontend.connModal.validation.privateKeyRequired'),
     trigger: 'blur',
   },
@@ -833,23 +835,23 @@ const rules = computed<FormRules>(() => ({
 const handleCredentialTypeChange = (credentialType: number) => {
   if (credentialType === CredentialType.Common) {
     formValue.value.useCommonCredential = true;
-    formValue.value.credentialID = undefined;
-    formValue.value.credential = undefined;
+    formValue.value.credentialID = null;
+    formValue.value.credential = null;
     return;
   }
   formValue.value.useCommonCredential = false;
-  formValue.value.credentialID = undefined;
+  formValue.value.credentialID = null;
   formValue.value.credential =
     credentialType === CredentialType.Password
       ? tempCachedCredentials.value.password
       : tempCachedCredentials.value.privateKey;
   formValue.value.credential.authMethod =
-    credentialType === CredentialType.Password ? AuthMethod.PASSWORD : AuthMethod.PRIVATEKEY;
+    credentialType === CredentialType.Password ? AuthMethod.Password : AuthMethod.PrivateKey;
 };
 
 const handleSelectCredential = async (id: number) => {
   if (!id) {
-    formValue.value.credentialID = undefined;
+    formValue.value.credentialID = null;
     return;
   }
   formValue.value.credentialID = id;
@@ -873,11 +875,11 @@ const fetchCredentials = async () => {
 
 const initOptions = async () => {
   const [groups, credentials, serialPorts] = await Promise.all([fetchGroups(), fetchCredentials(), fetchSerialPorts()]);
-  groupOptions.value = groups.map((group: model.Group) => ({
+  groupOptions.value = groups.map((group: Group) => ({
     label: group.name,
     value: group.id,
   }));
-  credentialOptions.value = credentials.map((credential: model.Credential) => ({
+  credentialOptions.value = credentials.map((credential: Credential) => ({
     label: credential.label,
     value: credential.id,
   }));
@@ -940,8 +942,8 @@ const handleConfirm = async () => {
 const resetForm = () => {
   formValue.value = createConnectionObject();
   tempCachedCredentials.value = {
-    password: createCredentialObject(AuthMethod.PASSWORD),
-    privateKey: createCredentialObject(AuthMethod.PRIVATEKEY),
+    password: createCredentialObject(AuthMethod.Password),
+    privateKey: createCredentialObject(AuthMethod.PrivateKey),
   };
   activeTab.value = 'basic';
   emit('update:show', false);

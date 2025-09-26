@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/pkg/base"
 	"github.com/google/wire"
 )
@@ -13,7 +12,6 @@ import (
 var PreferencesSrvSet = wire.NewSet(wire.Struct(new(PreferencesSrv), "*"))
 
 type PreferencesSrv struct {
-	Logger initialize.Logger
 }
 
 func (s *PreferencesSrv) Version() string {

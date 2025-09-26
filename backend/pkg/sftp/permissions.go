@@ -2,11 +2,11 @@ package sftp
 
 import (
 	"bufio"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/pkg/exec"
 	"golang.org/x/crypto/ssh"
 )
@@ -21,15 +21,13 @@ type PermissionsCache struct {
 	users         map[uint32]string
 	groups        map[uint32]string
 	fileInfoCache map[string]FileOwnerGroup
-	logger        initialize.Logger
 }
 
-func NewPermissionsCache(logger initialize.Logger) *PermissionsCache {
+func NewPermissionsCache() *PermissionsCache {
 	return &PermissionsCache{
 		users:         make(map[uint32]string),
 		groups:        make(map[uint32]string),
 		fileInfoCache: make(map[string]FileOwnerGroup),
-		logger:        logger,
 	}
 }
 
@@ -55,11 +53,11 @@ func (c *PermissionsCache) GetGroupName(gid uint32) string {
 
 func (c *PermissionsCache) preloadPermissions(conn *ssh.Client, execAdapter *exec.Adapter) {
 	if conn == nil {
-		c.logger.Warn("Cannot preload permissions: SSH client is nil")
+		slog.Warn("Cannot preload permissions: SSH client is nil")
 		return
 	}
 
-	c.logger.Info("Preloading users and groups information")
+	slog.Info("Preloading users and groups information")
 	users, groups := c.fetchAllUsersAndGroups(execAdapter)
 
 	c.mu.Lock()
@@ -72,18 +70,18 @@ func (c *PermissionsCache) preloadPermissions(conn *ssh.Client, execAdapter *exe
 		c.groups[gid] = name
 	}
 
-	c.logger.Info("Preloaded %d users and %d groups", len(users), len(groups))
+	slog.Info("Preloaded %d users and %d groups", len(users), len(groups))
 }
 
 func (c *PermissionsCache) fetchAllUsersAndGroups(execAdapter *exec.Adapter) (map[uint32]string, map[uint32]string) {
 	users := make(map[uint32]string)
 	groups := make(map[uint32]string)
 
-	c.logger.Debug("Executing command to fetch users and groups")
+	slog.Debug("Executing command to fetch users and groups")
 	result := execAdapter.Run("(echo '===USERS==='; getent passwd; echo '===GROUPS==='; getent group)")
 	if !result.Success() {
-		c.logger.Warn("Failed to fetch users and groups using getent: %v", result.Error())
-		c.logger.Info("Trying fallback method to read users and groups")
+		slog.Warn("Failed to fetch users and groups using getent: %v", result.Error())
+		slog.Info("Trying fallback method to read users and groups")
 		return c.fetchUsersAndGroupsFallback(execAdapter)
 	}
 
@@ -117,7 +115,7 @@ func (c *PermissionsCache) fetchAllUsersAndGroups(execAdapter *exec.Adapter) (ma
 	}
 
 	if err := scanner.Err(); err != nil {
-		c.logger.Error("Error scanning output: %v", err)
+		slog.Error("Error scanning output: %v", err)
 	}
 
 	return users, groups
@@ -129,7 +127,7 @@ func (c *PermissionsCache) fetchUsersAndGroupsFallback(execAdapter *exec.Adapter
 
 	passwdResult := execAdapter.Run("cat /etc/passwd")
 	if passwdResult.Success() {
-		c.logger.Debug("Reading users from /etc/passwd")
+		slog.Debug("Reading users from /etc/passwd")
 		scanner := bufio.NewScanner(strings.NewReader(passwdResult.StdOut()))
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -143,15 +141,15 @@ func (c *PermissionsCache) fetchUsersAndGroupsFallback(execAdapter *exec.Adapter
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			c.logger.Error("Error scanning passwd output: %v", err)
+			slog.Error("Error scanning passwd output: %v", err)
 		}
 	} else {
-		c.logger.Warn("Failed to read /etc/passwd: %v", passwdResult.Error())
+		slog.Warn("Failed to read /etc/passwd: %v", passwdResult.Error())
 	}
 
 	groupResult := execAdapter.Run("cat /etc/group")
 	if groupResult.Success() {
-		c.logger.Debug("Reading groups from /etc/group")
+		slog.Debug("Reading groups from /etc/group")
 		scanner := bufio.NewScanner(strings.NewReader(groupResult.StdOut()))
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -165,10 +163,10 @@ func (c *PermissionsCache) fetchUsersAndGroupsFallback(execAdapter *exec.Adapter
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			c.logger.Error("Error scanning group output: %v", err)
+			slog.Error("Error scanning group output: %v", err)
 		}
 	} else {
-		c.logger.Warn("Failed to read /etc/group: %v", groupResult.Error())
+		slog.Warn("Failed to read /etc/group: %v", groupResult.Error())
 	}
 
 	return users, groups

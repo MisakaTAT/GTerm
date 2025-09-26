@@ -1,3 +1,4 @@
+import type { CancellablePromise } from '@wailsio/runtime/types/cancellable';
 import { useMessage } from 'naive-ui';
 import { i18n } from './i18n';
 
@@ -23,7 +24,7 @@ export function getTranslated(code: string | undefined, fallback: string | undef
 }
 
 export async function callBackendFunction<T = any>(
-  backendFunction: (...args: any[]) => Promise<BackendResp>,
+  backendFunction: (...args: any[]) => CancellablePromise<BackendResp | null>,
   ...args: any[]
 ): Promise<CallResult<T>> {
   try {
@@ -37,7 +38,13 @@ export async function callBackendFunction<T = any>(
   }
 }
 
-export function handleCallResp<T = any>(resp: BackendResp): CallResult<T> {
+export function handleCallResp<T = any>(resp: BackendResp | null): CallResult<T> {
+  if (!resp) {
+    return {
+      ok: false,
+      msg: 'No data returned',
+    };
+  }
   if (resp.ok) {
     return {
       ok: true,
@@ -55,7 +62,7 @@ export function useCall() {
   const message = useMessage();
 
   async function call<T = any>(
-    backendFunction: (...args: any[]) => Promise<BackendResp>,
+    backendFunction: (...args: any[]) => CancellablePromise<BackendResp | null>,
     options: {
       args?: any[];
     } = {},

@@ -145,7 +145,7 @@
                     v-for="task in transferTasks"
                     :key="task.id"
                     class="task-item"
-                    :class="{ 'is-completed': task.status === FileTransferTaskState.COMPLETED }"
+                    :class="{ 'is-completed': task.status === FileTransferTaskState.Completed }"
                   >
                     <div class="task-info">
                       <div class="task-title">
@@ -164,7 +164,7 @@
                     <NProgress
                       type="line"
                       :percentage="getTaskPercentage(task)"
-                      :processing="task.status === FileTransferTaskState.PROGRESS"
+                      :processing="task.status === FileTransferTaskState.Progress"
                       :status="getTaskProgressStatus(task)"
                       :show-indicator="false"
                       :height="4"
@@ -265,9 +265,8 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import type { types } from '@wailsApp/go/models';
-import { enums } from '@wailsApp/go/models';
-import { ListConnection } from '@wailsApp/go/services/ConnectionSrv';
+import { FileTransferTaskState } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
+import { ListConnection } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/connectionsrv';
 import {
   ConnectSFTP,
   DisconnectSFTP,
@@ -276,8 +275,13 @@ import {
   SelectDownloadDirectory,
   SelectUploadFiles,
   UploadFiles,
-} from '@wailsApp/go/services/FileTransferSrv';
-import { EventsOff, EventsOn } from '@wailsApp/runtime';
+} from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/filetransfersrv';
+import type {
+  FileList,
+  FileTransferItemInfo,
+  FileTransferTask,
+} from '@wailsApp/github.com/MisakaTAT/GTerm/backend/types';
+import { Events } from '@wailsio/runtime';
 import {
   NBadge,
   NButton,
@@ -298,7 +302,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useCall } from '@/utils/call';
 
-const { FileTransferTaskState } = enums;
 const { t } = useI18n();
 const { call } = useCall();
 const themeVars = useThemeVars();
@@ -309,11 +312,11 @@ const isConnected = ref(false);
 
 const remoteAbsolutePath = ref('');
 const remotePathInput = ref('');
-const remoteFiles = ref<types.FileTransferItemInfo[]>([]);
+const remoteFiles = ref<FileTransferItemInfo[]>([]);
 const remoteSelectedFiles = ref<string[]>([]);
 const showTasksPopover = ref(false);
 
-const transferTasks = ref<types.FileTransferTask[]>([]);
+const transferTasks = ref<FileTransferTask[]>([]);
 const connections = ref<any[]>([]);
 
 const pathHistory = ref<string[]>([]);
@@ -344,13 +347,13 @@ const someRemoteSelected = computed(() => {
 
 const activeTasks = computed(() => {
   return transferTasks.value.filter(
-    task => task.status === FileTransferTaskState.PENDING || task.status === FileTransferTaskState.PROGRESS,
+    task => task.status === FileTransferTaskState.Pending || task.status === FileTransferTaskState.Progress,
   );
 });
 
 const hasCompletedTasks = computed(() => {
   return transferTasks.value.some(
-    task => task.status === FileTransferTaskState.COMPLETED || FileTransferTaskState.ERROR,
+    task => task.status === FileTransferTaskState.Completed || FileTransferTaskState.Error,
   );
 });
 
@@ -358,38 +361,38 @@ const toggleTasksPopover = () => {
   showTasksPopover.value = !showTasksPopover.value;
 };
 
-const getTaskFilename = (task: types.FileTransferTask): string => {
+const getTaskFilename = (task: FileTransferTask): string => {
   const pathParts = task.source.split('/');
   return pathParts[pathParts.length - 1];
 };
 
-const getTaskPercentage = (task: types.FileTransferTask): number => {
+const getTaskPercentage = (task: FileTransferTask): number => {
   if (task.size === 0) return 0;
   return Math.min(Math.floor((task.transferred / task.size) * 100), 100);
 };
 
-const getTaskProgressStatus = (task: types.FileTransferTask): 'success' | 'error' | 'warning' | undefined => {
+const getTaskProgressStatus = (task: FileTransferTask): 'success' | 'error' | 'warning' | undefined => {
   switch (task.status) {
-    case FileTransferTaskState.COMPLETED:
+    case FileTransferTaskState.Completed:
       return 'success';
-    case FileTransferTaskState.ERROR:
+    case FileTransferTaskState.Error:
       return 'error';
-    case FileTransferTaskState.PENDING:
+    case FileTransferTaskState.Pending:
       return 'warning';
     default:
       return undefined;
   }
 };
 
-const getTaskStatusText = (task: types.FileTransferTask): string => {
+const getTaskStatusText = (task: FileTransferTask): string => {
   switch (task.status) {
-    case FileTransferTaskState.COMPLETED:
+    case FileTransferTaskState.Completed:
       return t('frontend.file_transfer.completed');
-    case FileTransferTaskState.ERROR:
+    case FileTransferTaskState.Error:
       return task.error || t('frontend.file_transfer.failed');
-    case FileTransferTaskState.PENDING:
+    case FileTransferTaskState.Pending:
       return t('frontend.file_transfer.pending');
-    case FileTransferTaskState.PROGRESS:
+    case FileTransferTaskState.Progress:
       return `${getTaskPercentage(task)}%`;
     default:
       return '';
@@ -409,8 +412,8 @@ const refreshRemoteFiles = async () => {
   });
 
   if (resp.ok) {
-    const response = resp.data as types.FileList;
-    remoteFiles.value = response.files || [];
+    const response = resp.data as FileList;
+    remoteFiles.value = (response.files || []).filter(Boolean) as FileTransferItemInfo[];
     remoteAbsolutePath.value = response.absolutePath || '';
     remotePathInput.value = remoteAbsolutePath.value;
     remoteSelectedFiles.value = [];
@@ -429,7 +432,7 @@ const navigateTo = async (path: string, addHistory = true) => {
 
 const clearCompletedTasks = () => {
   transferTasks.value = transferTasks.value.filter(
-    task => task.status === FileTransferTaskState.PENDING || task.status === FileTransferTaskState.PROGRESS,
+    task => task.status === FileTransferTaskState.Pending || task.status === FileTransferTaskState.Progress,
   );
 };
 
@@ -484,7 +487,7 @@ const navigateToPath = () => {
   navigateTo(remotePathInput.value);
 };
 
-const handleFileClick = (file: types.FileTransferItemInfo) => {
+const handleFileClick = (file: FileTransferItemInfo) => {
   if (file.isDir) {
     const path = remoteAbsolutePath.value;
     let newPath;
@@ -498,7 +501,7 @@ const handleFileClick = (file: types.FileTransferItemInfo) => {
   }
 };
 
-const handleFileSelect = (file: types.FileTransferItemInfo, checked: boolean) => {
+const handleFileSelect = (file: FileTransferItemInfo, checked: boolean) => {
   if (checked) {
     if (!remoteSelectedFiles.value.includes(file.name)) {
       remoteSelectedFiles.value.push(file.name);
@@ -511,7 +514,7 @@ const handleFileSelect = (file: types.FileTransferItemInfo, checked: boolean) =>
   }
 };
 
-const handleRowClick = (file: types.FileTransferItemInfo) => {
+const handleRowClick = (file: FileTransferItemInfo) => {
   if (file.isDir) {
     handleFileClick(file);
   } else {
@@ -539,11 +542,10 @@ const uploadToRemote = async () => {
   const filesResponse = await call(SelectUploadFiles, {
     args: [t('frontend.file_transfer.select_files_title')],
   });
-
   if (!filesResponse.ok) {
     transferTasks.value = transferTasks.value.map(task => {
-      if (task.isUpload && task.status === FileTransferTaskState.PENDING) {
-        return { ...task, status: FileTransferTaskState.ERROR, error: filesResponse.msg };
+      if (task.isUpload && task.status === FileTransferTaskState.Pending) {
+        return { ...task, status: FileTransferTaskState.Error, error: filesResponse.msg || null };
       }
       return task;
     });
@@ -560,14 +562,15 @@ const uploadToRemote = async () => {
     const filename = source.split('/').pop() || t('frontend.file_transfer.unknown_file');
     const fileSize = 0;
 
-    const task: types.FileTransferTask = {
+    const task: FileTransferTask = {
       id: uuidv4(),
       source,
       destination: `${remoteAbsolutePath.value === '' ? '/' : remoteAbsolutePath.value}/${filename}`,
       size: fileSize,
       transferred: 0,
       isUpload: true,
-      status: FileTransferTaskState.PENDING,
+      status: FileTransferTaskState.Pending,
+      error: null,
     };
 
     transferTasks.value.push(task);
@@ -585,8 +588,8 @@ const uploadToRemote = async () => {
     await refreshRemoteFiles();
   } else {
     transferTasks.value = transferTasks.value.map(task => {
-      if (task.isUpload && task.status === FileTransferTaskState.PENDING) {
-        return { ...task, status: FileTransferTaskState.ERROR, error: response.msg };
+      if (task.isUpload && task.status === FileTransferTaskState.Pending) {
+        return { ...task, status: FileTransferTaskState.Error, error: response.msg || null };
       }
       return task;
     });
@@ -602,11 +605,10 @@ const downloadFromRemote = async () => {
   const dirResponse = await call(SelectDownloadDirectory, {
     args: [t('frontend.file_transfer.select_directory_title')],
   });
-
   if (!dirResponse.ok) {
     transferTasks.value = transferTasks.value.map(task => {
-      if (!task.isUpload && task.status === FileTransferTaskState.PENDING) {
-        return { ...task, status: FileTransferTaskState.ERROR, error: dirResponse.msg };
+      if (!task.isUpload && task.status === FileTransferTaskState.Pending) {
+        return { ...task, status: FileTransferTaskState.Error, error: dirResponse.msg || null };
       }
       return task;
     });
@@ -621,14 +623,15 @@ const downloadFromRemote = async () => {
     const source = sources[i];
     const destination = `${downloadPath}/${file.name}`;
 
-    const task: types.FileTransferTask = {
+    const task: FileTransferTask = {
       id: uuidv4(),
       source,
       destination,
       size: file.size,
       transferred: 0,
       isUpload: false,
-      status: FileTransferTaskState.PENDING,
+      status: FileTransferTaskState.Pending,
+      error: null,
     };
 
     transferTasks.value.push(task);
@@ -644,8 +647,8 @@ const downloadFromRemote = async () => {
 
   if (!response.ok) {
     transferTasks.value = transferTasks.value.map(task => {
-      if (!task.isUpload && task.status === FileTransferTaskState.PENDING) {
-        return { ...task, status: FileTransferTaskState.ERROR, error: response.msg };
+      if (!task.isUpload && task.status === FileTransferTaskState.Pending) {
+        return { ...task, status: FileTransferTaskState.Error, error: response.msg || null };
       }
       return task;
     });
@@ -668,14 +671,15 @@ const handleTransferProgress = (data: any) => {
   const fileName = data.fileName || '';
   let task = transferTasks.value.find(t => t.isUpload === taskType && t.source.endsWith(fileName));
   if (!task && fileName) {
-    const newTask: types.FileTransferTask = {
+    const newTask: FileTransferTask = {
       id: uuidv4(),
       source: taskType ? fileName : `${remoteAbsolutePath.value}/${fileName}`,
       destination: taskType ? `${remoteAbsolutePath.value}/${fileName}` : fileName,
       size: data.total || 0,
       transferred: data.transferred || 0,
       isUpload: taskType,
-      status: FileTransferTaskState.PROGRESS,
+      status: FileTransferTaskState.Progress,
+      error: null
     };
 
     transferTasks.value.push(newTask);
@@ -683,13 +687,13 @@ const handleTransferProgress = (data: any) => {
   }
 
   if (task) {
-    task.status = FileTransferTaskState.PROGRESS;
+    task.status = FileTransferTaskState.Progress;
     task.transferred = data.transferred || 0;
     task.size = data.total || task.size;
 
     if (data.progress >= 100) {
       setTimeout(() => {
-        task!.status = FileTransferTaskState.COMPLETED;
+        task!.status = FileTransferTaskState.Completed;
       }, 500);
     }
   }
@@ -708,7 +712,7 @@ onMounted(() => {
     }
   });
 
-  EventsOn('transfer:progress', handleTransferProgress);
+  Events.On('transfer:progress', handleTransferProgress);
 });
 
 onBeforeUnmount(() => {
@@ -716,7 +720,7 @@ onBeforeUnmount(() => {
     disconnectSftp();
   }
 
-  EventsOff('transfer:progress');
+  Events.Off('transfer:progress');
 });
 </script>
 

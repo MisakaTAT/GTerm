@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"github.com/MisakaTAT/GTerm/backend/enums"
+	"log/slog"
 	"sync"
 
 	"github.com/MisakaTAT/GTerm/backend/consts/messages"
@@ -17,7 +19,6 @@ import (
 var FileTransferSrvSet = wire.NewSet(wire.Struct(new(FileTransferSrv), "*"))
 
 type FileTransferSrv struct {
-	Logger           initialize.Logger
 	ConnectionSrv    *ConnectionSrv
 	AppContext       *initialize.AppContext
 	SFTPHandler      *sftp.Handler `wire:"-"`
@@ -26,7 +27,7 @@ type FileTransferSrv struct {
 
 func (s *FileTransferSrv) checkSFTPConnection() error {
 	if s.SFTPHandler == nil || !s.SFTPHandler.IsConnected {
-		s.Logger.Error("Not connected to SFTP server")
+		slog.Error("Not connected to SFTP server")
 		return errors.New("not connected to SFTP server")
 	}
 	return nil
@@ -47,28 +48,28 @@ func (s *FileTransferSrv) processPath(path string) (string, error) {
 	}
 	processedPath, err := s.SFTPHandler.ProcessPath(path)
 	if err != nil {
-		s.Logger.Error("Failed to process path %s: %v", path, err)
+		slog.Error("Failed to process path %s: %v", path, err)
 		return "", err
 	}
 	return processedPath, nil
 }
 
 func (s *FileTransferSrv) ConnectSFTP(connID uint) *resp.Resp {
-	s.Logger.Info("Connecting to SFTP server, connection ID: %d", connID)
+	slog.Info("Connecting to SFTP server, connection ID: %d", connID)
 
 	s.SFTPHandlerMutex.Lock()
 	defer s.SFTPHandlerMutex.Unlock()
 
 	if s.SFTPHandler != nil && s.SFTPHandler.IsConnected {
-		s.Logger.Info("Closing existing SFTP connection")
+		slog.Info("Closing existing SFTP connection")
 		s.SFTPHandler.Close()
 	}
 
-	s.SFTPHandler = sftp.NewSFTPHandler(s.Logger)
+	s.SFTPHandler = sftp.NewSFTPHandler()
 
 	conn, err := s.ConnectionSrv.FindByID(connID)
 	if err != nil {
-		s.Logger.Error("Connection not found: %v, connID: %d", err, connID)
+		slog.Error("Connection not found: %v, connID: %d", err, connID)
 		return resp.FailWithMsg(err.Error())
 	}
 
@@ -84,44 +85,44 @@ func (s *FileTransferSrv) ConnectSFTP(connID uint) *resp.Resp {
 	}
 
 	if err = s.SFTPHandler.Connect(conf); err != nil {
-		s.Logger.Error("Failed to connect to SFTP server: %v", err)
+		slog.Error("Failed to connect to SFTP server: %v", err)
 		return resp.FailWithMsg(err.Error())
 	}
 
-	s.Logger.Info("SFTP connection successful")
+	slog.Info("SFTP connection successful")
 	return resp.OkWithCode(messages.Connected)
 }
 
 func (s *FileTransferSrv) DisconnectSFTP() *resp.Resp {
-	s.Logger.Info("Disconnecting from SFTP server")
+	slog.Info("Disconnecting from SFTP server")
 
 	s.SFTPHandlerMutex.Lock()
 	defer s.SFTPHandlerMutex.Unlock()
 
 	if s.SFTPHandler == nil || !s.SFTPHandler.IsConnected {
-		s.Logger.Info("No active SFTP connection")
+		slog.Info("No active SFTP connection")
 		return resp.Ok()
 	}
 
 	s.SFTPHandler.Close()
 
-	s.Logger.Info("SFTP connection closed")
+	slog.Info("SFTP connection closed")
 	return resp.OkWithCode(messages.Disconnected)
 }
 
 func (s *FileTransferSrv) ListRemoteFiles(path string) *resp.Resp {
-	s.Logger.Info("Listing remote files, path: %s", path)
+	slog.Info("Listing remote files, path: %s", path)
 
 	return s.withSFTPConnection(func() *resp.Resp {
 		processedPath, err := s.processPath(path)
 		if err != nil {
 			return resp.FailWithMsg(err.Error())
 		}
-		s.Logger.Info("Using processed path for listing: %s", processedPath)
+		slog.Info("Using processed path for listing: %s", processedPath)
 
 		files, err := s.SFTPHandler.ListRemoteFiles(processedPath)
 		if err != nil {
-			s.Logger.Error("Failed to list remote files: %v", err)
+			slog.Error("Failed to list remote files: %v", err)
 			return resp.FailWithMsg(err.Error())
 		}
 
@@ -130,13 +131,13 @@ func (s *FileTransferSrv) ListRemoteFiles(path string) *resp.Resp {
 			AbsolutePath: processedPath,
 		}
 
-		s.Logger.Info("Successfully listed remote files at path %s, found %d files/directories", processedPath, len(files))
+		slog.Info("Successfully listed remote files at path %s, found %d files/directories", processedPath, len(files))
 		return resp.OkWithData(response)
 	})
 }
 
 func (s *FileTransferSrv) UploadFiles(localPaths []string, remotePath string) *resp.Resp {
-	s.Logger.Info("Uploading files, remote path: %s", remotePath)
+	slog.Info("Uploading files, remote path: %s", remotePath)
 
 	return s.withSFTPConnection(func() *resp.Resp {
 		processedPath, err := s.processPath(remotePath)
@@ -144,29 +145,29 @@ func (s *FileTransferSrv) UploadFiles(localPaths []string, remotePath string) *r
 			return resp.FailWithMsg(err.Error())
 		}
 		remotePath = processedPath
-		s.Logger.Info("Using processed remote path: %s", remotePath)
+		slog.Info("Using processed remote path: %s", remotePath)
 
 		totalFiles := len(localPaths)
 		completedFiles := 0
 
 		for _, localPath := range localPaths {
-			s.Logger.Info("Uploading file: %s -> %s", localPath, remotePath)
+			slog.Info("Uploading file: %s -> %s", localPath, remotePath)
 
 			fileName := sftp.GetFileName(localPath)
 			remoteFilePath, err := s.SFTPHandler.JoinRemotePaths(remotePath, fileName)
 			if err != nil {
-				s.Logger.Error("Failed to join remote paths: %v", err)
+				slog.Error("Failed to join remote paths: %v", err)
 				return resp.FailWithMsg(err.Error())
 			}
 
 			fileSize, err := sftp.GetFileSize(localPath)
 			if err != nil {
-				s.Logger.Error("Failed to get file size: %v", err)
+				slog.Error("Failed to get file size: %v", err)
 			}
 
 			err = s.SFTPHandler.UploadFile(localPath, remoteFilePath, func(transferred, total int64) {
 				progress := float64(transferred) / float64(total) * 100
-				s.Logger.Debug("Upload progress: %.2f%% (%d/%d)", progress, transferred, total)
+				slog.Debug("Upload progress: %.2f%% (%d/%d)", progress, transferred, total)
 
 				totalProgress := (float64(completedFiles*100) + progress) / float64(totalFiles)
 
@@ -184,20 +185,20 @@ func (s *FileTransferSrv) UploadFiles(localPaths []string, remotePath string) *r
 			})
 
 			if err != nil {
-				s.Logger.Error("Failed to upload file: %v", err)
+				slog.Error("Failed to upload file: %v", err)
 				return resp.FailWithMsg(err.Error())
 			}
 
 			completedFiles++
 		}
 
-		s.Logger.Info("Successfully uploaded %d files", len(localPaths))
+		slog.Info("Successfully uploaded %d files", len(localPaths))
 		return resp.OkWithCode(messages.UploadSuccess)
 	})
 }
 
 func (s *FileTransferSrv) DownloadFiles(remotePaths []string, localPath string) *resp.Resp {
-	s.Logger.Info("Downloading files, local path: %s", localPath)
+	slog.Info("Downloading files, local path: %s", localPath)
 
 	return s.withSFTPConnection(func() *resp.Resp {
 		processedPaths := make([]string, len(remotePaths))
@@ -207,21 +208,21 @@ func (s *FileTransferSrv) DownloadFiles(remotePaths []string, localPath string) 
 				return resp.FailWithMsg(err.Error())
 			}
 			processedPaths[i] = processedPath
-			s.Logger.Info("Processed download path: %s -> %s", remotePath, processedPath)
+			slog.Info("Processed download path: %s -> %s", remotePath, processedPath)
 		}
 
 		totalFiles := len(processedPaths)
 		completedFiles := 0
 
 		for _, remotePath := range processedPaths {
-			s.Logger.Info("Downloading file: %s -> %s", remotePath, localPath)
+			slog.Info("Downloading file: %s -> %s", remotePath, localPath)
 
 			fileName := sftp.GetFileName(remotePath)
 			localFilePath := sftp.JoinPath(localPath, fileName)
 
 			fileSize, err := s.SFTPHandler.GetRemoteFileSize(remotePath)
 			if err != nil {
-				s.Logger.Error("Failed to get remote file size: %v", err)
+				slog.Error("Failed to get remote file size: %v", err)
 			}
 
 			err = s.SFTPHandler.DownloadFile(remotePath, localFilePath, func(transferred, total int64) {
@@ -243,20 +244,20 @@ func (s *FileTransferSrv) DownloadFiles(remotePaths []string, localPath string) 
 			})
 
 			if err != nil {
-				s.Logger.Error("Failed to download file: %v", err)
+				slog.Error("Failed to download file: %v", err)
 				return resp.FailWithMsg(err.Error())
 			}
 
 			completedFiles++
 		}
 
-		s.Logger.Info("Successfully downloaded %d files", len(processedPaths))
+		slog.Info("Successfully downloaded %d files", len(processedPaths))
 		return resp.OkWithCode(messages.DownloadSuccess)
 	})
 }
 
 func (s *FileTransferSrv) CreateRemoteFolder(path string) *resp.Resp {
-	s.Logger.Info("Creating remote folder: %s", path)
+	slog.Info("Creating remote folder: %s", path)
 
 	return s.withSFTPConnection(func() *resp.Resp {
 		if path == "" {
@@ -267,42 +268,42 @@ func (s *FileTransferSrv) CreateRemoteFolder(path string) *resp.Resp {
 		if err != nil {
 			return resp.FailWithMsg(err.Error())
 		}
-		s.Logger.Info("Using processed path for folder creation: %s", processedPath)
+		slog.Info("Using processed path for folder creation: %s", processedPath)
 
 		err = s.SFTPHandler.CreateRemoteFolder(processedPath)
 		if err != nil {
-			s.Logger.Error("Failed to create remote folder: %v", err)
+			slog.Error("Failed to create remote folder: %v", err)
 			return resp.FailWithMsg(err.Error())
 		}
 
-		s.Logger.Info("Remote folder created successfully")
+		slog.Info("Remote folder created successfully")
 		return resp.OkWithCode(messages.CreateFolderSuccess)
 	})
 }
 
 func (s *FileTransferSrv) SelectDownloadDirectory(title string) *resp.Resp {
-	s.Logger.Info("Opening directory selection dialog with title: %s", title)
+	slog.Info("Opening directory selection dialog with title: %s", title)
 
 	directory, err := runtime.OpenDirectoryDialog(s.AppContext.Context(), runtime.OpenDialogOptions{
 		Title: title,
 	})
 
 	if err != nil {
-		s.Logger.Error("Failed to open directory selection dialog: %v", err)
+		slog.Error("Failed to open directory selection dialog: %v", err)
 		return resp.FailWithMsg(err.Error())
 	}
 
 	if directory == "" {
-		s.Logger.Info("User canceled directory selection")
+		slog.Info("User canceled directory selection")
 		return resp.OkWithCode("file_transfer.user_canceled")
 	}
 
-	s.Logger.Info("User selected directory: %s", directory)
+	slog.Info("User selected directory: %s", directory)
 	return resp.OkWithData(directory)
 }
 
 func (s *FileTransferSrv) SelectUploadFiles(title string) *resp.Resp {
-	s.Logger.Info("Opening file selection dialog with title: %s", title)
+	slog.Info("Opening file selection dialog with title: %s", title)
 
 	files, err := runtime.OpenMultipleFilesDialog(s.AppContext.Context(), runtime.OpenDialogOptions{
 		Title:                title,
@@ -312,16 +313,16 @@ func (s *FileTransferSrv) SelectUploadFiles(title string) *resp.Resp {
 	})
 
 	if err != nil {
-		s.Logger.Error("Failed to open file selection dialog: %v", err)
+		slog.Error("Failed to open file selection dialog: %v", err)
 		return resp.FailWithMsg(err.Error())
 	}
 
 	if len(files) == 0 {
-		s.Logger.Info("User canceled file selection")
+		slog.Info("User canceled file selection")
 		return resp.OkWithCode("file_transfer.user_canceled")
 	}
 
-	s.Logger.Info("User selected %d files: %v", len(files), files)
+	slog.Info("User selected %d files: %v", len(files), files)
 	return resp.OkWithData(files)
 }
 
@@ -329,5 +330,8 @@ func (s *FileTransferSrv) Types(
 	_ *types.FileTransferItemInfo,
 	_ *types.FileList,
 	_ *types.FileTransferTask,
+	_ *enums.ConnProtocol,
+	_ *enums.TerminalType,
+	_ *enums.FileTransferTaskState,
 ) {
 }

@@ -4,7 +4,6 @@ import (
 	"github.com/MisakaTAT/GTerm/backend/consts/messages"
 	"github.com/MisakaTAT/GTerm/backend/dal/model"
 	"github.com/MisakaTAT/GTerm/backend/dal/query"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/utils/resp"
 	"github.com/google/wire"
 )
@@ -12,8 +11,7 @@ import (
 var GroupSrvSet = wire.NewSet(wire.Struct(new(GroupSrv), "*"))
 
 type GroupSrv struct {
-	Logger initialize.Logger
-	Query  *query.Query
+	Query *query.Query
 }
 
 func (s *GroupSrv) CreateGroup(group *model.Group) *resp.Resp {

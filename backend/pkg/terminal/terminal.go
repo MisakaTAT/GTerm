@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/MisakaTAT/GTerm/backend/enums"
-	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/gorilla/websocket"
 )
 
@@ -25,15 +24,13 @@ type Terminal struct {
 	handler  Handler
 	ws       *websocket.Conn
 	stopFunc func(ws *websocket.Conn)
-	logger   initialize.Logger
 }
 
-func NewTerminal(ws *websocket.Conn, handler Handler, stopFunc func(ws *websocket.Conn), logger initialize.Logger) *Terminal {
+func NewTerminal(ws *websocket.Conn, handler Handler, stopFunc func(ws *websocket.Conn)) *Terminal {
 	return &Terminal{
 		ws:       ws,
 		handler:  handler,
 		stopFunc: stopFunc,
-		logger:   logger,
 	}
 }
 

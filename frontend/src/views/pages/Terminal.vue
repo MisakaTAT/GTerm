@@ -78,9 +78,8 @@
 <script setup lang="ts">
 import '@xterm/xterm/css/xterm.css';
 import { Icon } from '@iconify/vue';
-import { enums } from '@wailsApp/go/models';
-import { WebsocketPort } from '@wailsApp/go/services/TerminalSrv';
-import { LogInfo } from '@wailsApp/runtime/runtime';
+import { TerminalType } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
+import { WebsocketPort } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/terminalsrv';
 import { CanvasAddon } from '@xterm/addon-canvas';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -148,7 +147,7 @@ const acceptFingerprint = (id: number) => {
 
   sockets.value[id]?.send(
     JSON.stringify({
-      type: enums.TerminalType.FINGERPRINTCONFIRM,
+      type: TerminalType.TerminalTypeFingerprintConfirm,
       accept: true,
     }),
   );
@@ -165,7 +164,7 @@ const rejectFingerprint = (id: number) => {
 
   sockets.value[id]?.send(
     JSON.stringify({
-      type: enums.TerminalType.FINGERPRINTCONFIRM,
+      type: TerminalType.TerminalTypeFingerprintConfirm,
       accept: false,
     }),
   );
@@ -232,10 +231,10 @@ const initializeXterm = async (id: number) => {
   });
 
   terminal.open(terminalEl);
-  terminal.onData(data => sockets.value[id]?.send(JSON.stringify({ type: enums.TerminalType.CMD, cmd: data })));
+  terminal.onData(data => sockets.value[id]?.send(JSON.stringify({ type: TerminalType.TerminalTypeCMD, cmd: data })));
   terminal.onResize(({ cols, rows }) => {
     if (sockets.value[id]?.readyState === WebSocket.OPEN) {
-      sockets.value[id]?.send(JSON.stringify({ type: enums.TerminalType.RESIZE, cols, rows }));
+      sockets.value[id]?.send(JSON.stringify({ type: TerminalType.TerminalTypeResize, cols, rows }));
     }
   });
 };
@@ -274,7 +273,7 @@ const initializeWebsocket = async (id: number, hostId: number) => {
     socket.onmessage = async (event: MessageEvent) => {
       const data = JSON.parse(event.data);
       switch (data.type) {
-        case enums.TerminalType.ERROR:
+        case TerminalType.TerminalTypeError:
           updateStatus(id, {
             isConnecting: false,
             errorCausedClosed: true,
@@ -284,7 +283,7 @@ const initializeWebsocket = async (id: number, hostId: number) => {
           connectedTerminals.value[id] = false;
           socket?.close();
           break;
-        case enums.TerminalType.FINGERPRINTCONFIRM:
+        case TerminalType.TerminalTypeFingerprintConfirm:
           updateStatus(id, {
             isConnecting: false,
             isFingerprintConfirm: true,
@@ -292,7 +291,7 @@ const initializeWebsocket = async (id: number, hostId: number) => {
             hostFingerprint: data.fingerprint,
           });
           break;
-        case enums.TerminalType.CONNECTED:
+        case TerminalType.TerminalTypeConnected:
           updateStatus(id, { isConnecting: false });
           connectedTerminals.value[id] = true;
           if (connectionTabs?.value) {
@@ -304,7 +303,7 @@ const initializeWebsocket = async (id: number, hostId: number) => {
             fitAddons.value[id]?.fit();
           });
           break;
-        case enums.TerminalType.DATA:
+        case TerminalType.TerminalTypeData:
           terminals.value[id]?.write(data.content);
           break;
       }
@@ -348,7 +347,6 @@ const reconnect = async (id: number) => {
   const conn = connectionStore.connections.find(c => c.id === id);
   if (!conn) return;
 
-  LogInfo(`Reconnecting to terminal ID: ${id}, connId: ${conn.connId}`);
   updateStatus(id, {
     errorCausedClosed: false,
     isConnecting: true,
