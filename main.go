@@ -30,6 +30,7 @@ func main() {
 		Height:           800,
 		MinWidth:         1024,
 		MinHeight:        768,
+		Frameless:        !app.PreferencesSrv.IsDarwin(),
 		BackgroundColour: application.NewRGBA(27, 38, 54, 0),
 		Mac: application.MacWindow{
 			TitleBar: application.MacTitleBarHidden,

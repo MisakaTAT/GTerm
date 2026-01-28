@@ -1,6 +1,13 @@
 <template>
   <div class="titlebar-container" @dblclick="toggleFullscreen">
-    <div class="titlebar-left" :class="{ 'darwin-left': isDarwin }">
+    <div
+      class="titlebar-left"
+      :class="{
+        'non-darwin-left': !isDarwin,
+        'darwin-left': isDarwin,
+        'darwin-fullscreen': isDarwin && isFullscreen,
+      }"
+    >
       <NTooltip placement="bottom" trigger="hover">
         <template #trigger>
           <div
@@ -236,8 +243,16 @@ const toggleTheme = () => {
   position: relative;
   z-index: 1;
 
+  &.non-darwin-left {
+    margin-left: 8px;
+  }
+
   &.darwin-left {
     margin-left: 76px;
+  }
+
+  &.darwin-fullscreen {
+    margin-left: 8px;
   }
 }
 
