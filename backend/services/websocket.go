@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/MisakaTAT/GTerm/backend/consts/messages"
 	"github.com/MisakaTAT/GTerm/backend/enums"
@@ -28,19 +29,20 @@ var ug = websocket.Upgrader{
 	WriteBufferSize:   1024 * 1024 * 10,
 	EnableCompression: true,
 	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			return false
-		}
-		allowedOrigins := []string{
-			"wails://wails",
-		}
-		for _, allowed := range allowedOrigins {
-			if strings.HasPrefix(origin, allowed) {
-				return true
-			}
-		}
-		return false
+		// origin := r.Header.Get("Origin")
+		// if origin == "" {
+		// 	return false
+		// }
+		// allowedOrigins := []string{
+		// 	"wails://wails",
+		// }
+		// for _, allowed := range allowedOrigins {
+		// 	if strings.HasPrefix(origin, allowed) {
+		// 		return true
+		// 	}
+		// }
+		// return false
+		return true
 	},
 }
 

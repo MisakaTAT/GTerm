@@ -1,8 +1,7 @@
 <template>
   <NLayout class="layout-container">
-    <NLayoutHeader bordered class="header" :class="{ 'darwin-header': isDarwin }">
-      <Titlebar v-if="!isTerminal" ref="titlebarRef" :is-darwin="isDarwin" />
-      <Header v-else ref="headerRef" />
+    <NLayoutHeader bordered class="header">
+      <Header ref="titlebarRef" :is-darwin="isDarwin" />
     </NLayoutHeader>
 
     <NLayout class="content">
@@ -21,12 +20,8 @@
 import { IsDarwin } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/preferencessrv';
 import { NLayout, NLayoutContent, NLayoutHeader } from 'naive-ui';
 import { computed, onMounted, provide, ref } from 'vue';
-import { useRoute } from 'vue-router';
 import Header from '@/layouts/Header.vue';
-import Titlebar from '@/layouts/Titlebar.vue';
 
-const route = useRoute();
-const isTerminal = computed(() => route.name === 'Terminal');
 const headerRef = ref();
 const titlebarRef = ref();
 const isDarwin = ref(false);
@@ -48,14 +43,9 @@ provide(
     height: 35px;
     display: flex;
     align-items: center;
-    
-    &.darwin-header {
-      padding-left: 0;
-    }
   }
   .content {
     height: calc(100vh - 35px);
   }
 }
-
 </style>
