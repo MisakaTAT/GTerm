@@ -1,189 +1,170 @@
 <template>
   <div class="page-container">
-    <div ref="sidebarRef" class="sidebar" :style="{ width: `${sidebarWidth}px` }">
-      <div class="groups-list">
-        <div class="list-header">
-          <NInput
-            v-model:value="searchText"
-            size="small"
-            clearable
-            :placeholder="$t('frontend.connection.search')"
-            :allow-input="value => !/\s/.test(value)"
-          >
-            <template #prefix>
-              <Icon icon="ph:magnifying-glass" />
-            </template>
-          </NInput>
-          <n-divider vertical />
-          <div class="header-right">
-            <NTooltip trigger="hover">
-              <template #trigger>
-                <NButton text size="large" @click="handleAddGroup">
-                  <template #icon>
-                    <Icon icon="ph:folder-plus" />
-                  </template>
-                </NButton>
+    <!-- 顶部工具栏 -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <NInput
+          v-model:value="searchText"
+          size="medium"
+          clearable
+          :placeholder="$t('frontend.connection.search')"
+          :allow-input="value => !/\s/.test(value)"
+          style="max-width: 300px"
+        >
+          <template #prefix>
+            <Icon icon="ph:magnifying-glass" />
+          </template>
+        </NInput>
+      </div>
+      <div class="toolbar-right">
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton type="primary" @click="handleAddGroup">
+              <template #icon>
+                <Icon icon="ph:folder-plus" />
               </template>
               {{ $t('frontend.connection.add.group') }}
-            </NTooltip>
-            <NTooltip trigger="hover">
-              <template #trigger>
-                <NButton text size="large" @click="handleAddConn">
-                  <template #icon>
-                    <Icon icon="ph:plus" />
-                  </template>
-                </NButton>
+            </NButton>
+          </template>
+        </NTooltip>
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton type="primary" @click="handleAddConn">
+              <template #icon>
+                <Icon icon="ph:plus" />
               </template>
               {{ $t('frontend.connection.add.conn') }}
-            </NTooltip>
-          </div>
-        </div>
-        <div class="list-content">
-          <!-- 资产列表部分 -->
-          <div class="section-header">
-            <div class="section-title">{{ $t('frontend.connection.sections.assetList') }}</div>
-            <NButton text size="tiny" @click="assetListCollapsed = !assetListCollapsed">
-              <template #icon>
-                <Icon :icon="assetListCollapsed ? 'ph:caret-right' : 'ph:caret-down'" />
-              </template>
             </NButton>
-          </div>
-          <div v-show="!assetListCollapsed" class="asset-list">
-            <div
-              v-for="conn in filteredAssets"
-              :key="conn.id"
-              class="asset-item"
-              @click="handleSelectConn(conn)"
-              @contextmenu="handleConnContextMenu($event, conn)"
-            >
-              <div class="asset-icon">
-                <Icon :icon="getSessionIcon(conn).icon" :class="{ 'text-logo': getSessionIcon(conn).isText }" />
-              </div>
-              <div class="asset-info">
-                <div class="asset-name">{{ conn.label }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 分组列表部分 -->
-          <div class="section-header">
-            <div class="section-title">{{ $t('frontend.connection.sections.groupList') }}</div>
-            <NButton text size="tiny" @click="groupListCollapsed = !groupListCollapsed">
-              <template #icon>
-                <Icon :icon="groupListCollapsed ? 'ph:caret-right' : 'ph:caret-down'" />
-              </template>
-            </NButton>
-          </div>
-          <div v-show="!groupListCollapsed" class="group-list">
-            <div
-              v-for="group in filteredGroups"
-              :key="group.id"
-              class="group-item"
-              :class="{ active: selectedGroup?.id === group.id }"
-              @click="handleSelectGroup(group)"
-              @contextmenu="handleGroupContextMenu($event, group)"
-            >
-              <div class="group-icon">
-                <Icon :icon="getGroupConnCount(group) > 0 ? 'ph:folders-duotone' : 'ph:folder-dashed-duotone'" />
-              </div>
-              <div class="group-info">
-                <div class="group-name">{{ group.name }}</div>
-              </div>
-              <div class="group-count">{{ getGroupConnCount(group) }}</div>
-            </div>
-          </div>
-
-          <NDropdown
-            trigger="manual"
-            placement="bottom-start"
-            :show="showDropdown"
-            :options="dropdownOptions"
-            :x="dropdownX"
-            :y="dropdownY"
-            @select="handleDropdownSelect"
-            @clickoutside="handleClickoutside"
-          />
-        </div>
+          </template>
+        </NTooltip>
       </div>
     </div>
 
-    <div class="resize-handle" :style="{ left: `${sidebarWidth}px` }" @mousedown="startResize"></div>
-
-    <div class="main-content">
-      <div class="content-header">
-        <div class="header-left">
-          <h2>{{ selectedGroup ? selectedGroup.name : $t('frontend.sider.assets') }}</h2>
-          <NBadge :value="filteredConns.length" show-zero type="success" />
+    <!-- 分组列表 -->
+    <div class="groups-container">
+      <!-- 默认分组（未分组的连接） -->
+      <div v-if="defaultGroupConns.length > 0 || !searchText" class="group-section">
+        <div
+          class="group-header"
+          @click="toggleGroupCollapse('default')"
+          @contextmenu="handleGroupContextMenu($event, null)"
+        >
+          <Icon
+            :icon="defaultGroupConns.length > 0 ? 'ph:folders-duotone' : 'ph:folder-dashed-duotone'"
+            class="group-icon"
+          />
+          <span class="group-title">{{ $t('frontend.connection.defaultGroup') }}</span>
+          <span class="group-count">{{ defaultGroupConns.length }}</span>
         </div>
-      </div>
-
-      <div v-if="filteredConns.length > 0" class="conns-grid">
-        <div v-for="conn in filteredConns" :key="conn.id" class="conn-card" @click="toTerminal(conn)">
-          <div class="card-header">
-            <div class="card-left">
-              <div class="os-icon" :class="{ 'text-logo': getSessionIcon(conn).isText }">
-                <Icon :icon="getSessionIcon(conn).icon" />
-              </div>
-              <div class="card-info">
-                <div class="conn-name">{{ conn.label }}</div>
-                <div v-if="conn.connProtocol === ConnProtocol.SSH" class="conn-info">
-                  {{ conn.credential?.username }}@{{ conn.host }}
+        <div v-show="!collapsedGroups.has('default')" class="group-content">
+          <div v-if="defaultGroupConns.length > 0" class="conns-grid">
+            <div
+              v-for="conn in defaultGroupConns"
+              :key="conn.id"
+              class="conn-card"
+              @click="toTerminal(conn)"
+              @contextmenu="handleConnContextMenu($event, conn)"
+            >
+              <div class="card-content">
+                <div class="os-icon" :class="{ 'text-logo': getSessionIcon(conn).isText }">
+                  <Icon :icon="getSessionIcon(conn).icon" />
                 </div>
-                <div v-if="conn.connProtocol === ConnProtocol.Serial" class="conn-info">
-                  {{ conn.serialPort }}
+                <div class="card-info">
+                  <div class="conn-name">{{ conn.label }}</div>
+                  <div class="conn-meta">
+                    <span v-if="conn.connProtocol === ConnProtocol.SSH" class="conn-info">
+                      {{ conn.credential?.username }}@{{ conn.host }}
+                    </span>
+                    <span v-if="conn.connProtocol === ConnProtocol.Serial" class="conn-info">
+                      {{ conn.serialPort }}
+                    </span>
+                    <span class="protocol-badge">{{ conn.connProtocol }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <NButton circle text size="small" class="edit-btn" @click.stop="handleEditConn(conn)">
-              <template #icon>
-                <Icon icon="ph:pencil-simple" class="edit-icon" />
-              </template>
-            </NButton>
           </div>
-
-          <div class="card-footer">
-            <div class="protocol-info">
-              <Icon :icon="getProtocolIcon(conn)" />
-              <span>{{ conn.connProtocol }}</span>
-            </div>
-            <div class="connection-tags" style="margin-left: auto">
-              <NTooltip v-if="getConnCount(conn) > 0" trigger="hover">
-                <template #trigger>
-                  <div>
-                    <NTag size="tiny" type="success">
-                      {{ getConnCount(conn) }}
-                    </NTag>
-                  </div>
-                </template>
-                {{ $t('frontend.connection.connection.active') }}
-              </NTooltip>
-              <NTooltip v-if="getErrorConnCount(conn) > 0" trigger="hover">
-                <template #trigger>
-                  <div>
-                    <NTag size="tiny" type="error">
-                      {{ getErrorConnCount(conn) }}
-                    </NTag>
-                  </div>
-                </template>
-                {{ $t('frontend.connection.connection.disconnected') }}
-              </NTooltip>
-            </div>
+          <div v-else class="empty-group">
+            <NEmpty
+              :description="
+                $t('frontend.connection.empty.group_desc', { name: $t('frontend.connection.defaultGroup') })
+              "
+            />
           </div>
         </div>
       </div>
-      <div v-else class="empty-state">
+
+      <!-- 其他分组 -->
+      <div v-for="group in filteredGroups" :key="group.id" class="group-section">
+        <div
+          class="group-header"
+          @click="toggleGroupCollapse(group.id)"
+          @contextmenu="handleGroupContextMenu($event, group)"
+        >
+          <Icon
+            :icon="getGroupConnCount(group) > 0 ? 'ph:folders-duotone' : 'ph:folder-dashed-duotone'"
+            class="group-icon"
+          />
+          <span class="group-title">{{ group.name }}</span>
+          <span class="group-count">{{ getGroupConnCount(group) }}</span>
+        </div>
+        <div v-show="!collapsedGroups.has(group.id)" class="group-content">
+          <div v-if="getGroupConnCount(group) > 0" class="conns-grid">
+            <div
+              v-for="conn in getGroupConns(group)"
+              :key="conn.id"
+              class="conn-card"
+              @click="toTerminal(conn)"
+              @contextmenu="handleConnContextMenu($event, conn)"
+            >
+              <div class="card-content">
+                <div class="os-icon" :class="{ 'text-logo': getSessionIcon(conn).isText }">
+                  <Icon :icon="getSessionIcon(conn).icon" />
+                </div>
+                <div class="card-info">
+                  <div class="conn-name">{{ conn.label }}</div>
+                  <div class="conn-meta">
+                    <span v-if="conn.connProtocol === ConnProtocol.SSH" class="conn-info">
+                      {{ conn.credential?.username }}@{{ conn.host }}
+                    </span>
+                    <span v-if="conn.connProtocol === ConnProtocol.Serial" class="conn-info">
+                      {{ conn.serialPort }}
+                    </span>
+                    <span class="protocol-badge">{{ conn.connProtocol }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-group">
+            <NEmpty :description="$t('frontend.connection.empty.group_desc', { name: group.name })" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 空状态 -->
+      <div v-if="groupsWithConns.length === 0 && defaultGroupConns.length === 0" class="empty-state">
         <NResult
           status="404"
           :title="$t('frontend.connection.empty.title')"
-          :description="
-            selectedGroup
-              ? $t('frontend.connection.empty.group_desc', { name: selectedGroup.name })
-              : $t('frontend.connection.empty.all_desc')
-          "
+          :description="$t('frontend.connection.empty.all_desc')"
         />
       </div>
     </div>
 
+    <!-- 右键菜单 -->
+    <NDropdown
+      trigger="manual"
+      placement="bottom-start"
+      :show="showDropdown"
+      :options="dropdownOptions"
+      :x="dropdownX"
+      :y="dropdownY"
+      @select="handleDropdownSelect"
+      @clickoutside="handleClickoutside"
+    />
+
+    <!-- 模态框 -->
     <ConnectionModal
       v-model:show="showConnModal"
       :is-edit="isEditConn"
@@ -200,9 +181,9 @@ import type { Connection, Group } from '@wailsApp/github.com/MisakaTAT/GTerm/bac
 import { ConnProtocol } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
 import { DeleteConnection, ListConnection } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/connectionsrv';
 import { DeleteGroup, ListGroup } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/groupsrv';
-import { NBadge, NButton, NDropdown, NInput, NResult, NTag, NTooltip, useDialog, useThemeVars } from 'naive-ui';
+import { NBadge, NButton, NDropdown, NEmpty, NInput, NResult, NTooltip, useDialog, useThemeVars } from 'naive-ui';
 import type { DropdownOption } from 'naive-ui';
-import { computed, h, onMounted, onUnmounted, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useConnectionStore } from '@/stores/connection';
@@ -215,9 +196,9 @@ const connStore = useConnectionStore();
 const { t } = useI18n();
 const { call } = useCall();
 
-const groups = ref<Group[]>();
-const conns = ref<Connection[]>();
-const selectedGroup = ref<Group | null>(null);
+const groups = ref<Group[]>([]);
+const conns = ref<Connection[]>([]);
+const collapsedGroups = ref<Set<number | 'default'>>(new Set());
 
 const showDropdown = ref(false);
 const dropdownX = ref(0);
@@ -225,9 +206,6 @@ const dropdownY = ref(0);
 const dropdownOptions = ref<DropdownOption[]>([]);
 
 const searchText = ref('');
-
-const assetListCollapsed = ref(false);
-const groupListCollapsed = ref(false);
 
 const showConnModal = ref(false);
 const showGroupModal = ref(false);
@@ -239,21 +217,75 @@ const editGroup = ref<Group | undefined>(undefined);
 const currentContextNode = ref<any>(null);
 
 const dialog = useDialog();
+const themeVars = useThemeVars();
 
-const updateDropdownOptions = (type: 'group' | 'conn') => {
+// 默认分组（未分组的连接）
+const defaultGroupConns = computed(() => {
+  let filtered = conns.value?.filter(conn => !conn.groupID || conn.groupID === 0) || [];
+  if (searchText.value) {
+    filtered = filtered.filter(
+      conn =>
+        conn.label.toLowerCase().includes(searchText.value.toLowerCase()) ||
+        conn.host?.toLowerCase().includes(searchText.value.toLowerCase()),
+    );
+  }
+  return filtered;
+});
+
+// 过滤后的分组列表
+const filteredGroups = computed(() => {
+  if (!searchText.value) return groups.value || [];
+  return groups.value?.filter(group => group.name.toLowerCase().includes(searchText.value.toLowerCase())) || [];
+});
+
+// 有连接的分组列表（用于判断是否显示空状态）
+const groupsWithConns = computed(() => {
+  return filteredGroups.value.filter(group => getGroupConnCount(group) > 0);
+});
+
+// 获取分组下的连接
+const getGroupConns = (group: Group) => {
+  let filtered = conns.value?.filter(conn => conn.groupID === group.id) || [];
+  if (searchText.value) {
+    filtered = filtered.filter(
+      conn =>
+        conn.label.toLowerCase().includes(searchText.value.toLowerCase()) ||
+        conn.host?.toLowerCase().includes(searchText.value.toLowerCase()),
+    );
+  }
+  return filtered;
+};
+
+// 获取分组连接数量
+const getGroupConnCount = (group: Group) => {
+  return conns.value?.filter(conn => conn.groupID === group.id).length || 0;
+};
+
+// 切换分组折叠状态
+const toggleGroupCollapse = (groupId: number | 'default') => {
+  if (collapsedGroups.value.has(groupId)) {
+    collapsedGroups.value.delete(groupId);
+  } else {
+    collapsedGroups.value.add(groupId);
+  }
+};
+
+const updateDropdownOptions = (type: 'group' | 'conn', isDefaultGroup = false) => {
   if (type === 'group') {
-    dropdownOptions.value = [
-      {
+    const options: DropdownOption[] = [];
+    if (!isDefaultGroup) {
+      options.push({
         label: t('frontend.connection.menu.edit_group'),
         key: 'edit-group',
         icon: () => h(Icon, { icon: 'ph:pencil-simple' }),
-      },
-      {
+      });
+      options.push({
         label: t('frontend.connection.menu.delete_group'),
         key: 'delete-group',
         icon: () => h(Icon, { icon: 'ph:trash' }),
-      },
-    ];
+      });
+    }
+    dropdownOptions.value = options;
   } else {
     dropdownOptions.value = [
       {
@@ -273,11 +305,6 @@ const updateDropdownOptions = (type: 'group' | 'conn') => {
 const handleClickoutside = () => {
   showDropdown.value = false;
 };
-
-const filteredConns = computed(() => {
-  if (!selectedGroup.value) return conns.value || [];
-  return conns.value?.filter(conn => conn.groupID === selectedGroup.value?.id) || [];
-});
 
 const toTerminal = (conn: Connection) => {
   const connection = {
@@ -306,6 +333,17 @@ const fetchData = async () => {
   const [groupsData, connsData] = await Promise.all([fetchGroups(), fetchConns()]);
   groups.value = groupsData;
   conns.value = connsData;
+
+  // 默认折叠没有连接的分组
+  if (defaultGroupConns.value.length === 0) {
+    collapsedGroups.value.add('default');
+  }
+
+  groups.value.forEach(group => {
+    if (getGroupConnCount(group) === 0) {
+      collapsedGroups.value.add(group.id);
+    }
+  });
 };
 
 const handleEditConn = (conn: Connection) => {
@@ -332,7 +370,11 @@ const handleAddGroup = () => {
 
 const handleEditGroup = () => {
   if (!currentContextNode.value) return;
-  const groupId = Number.parseInt(currentContextNode.value.key.replace('group-', ''));
+  const groupId =
+    currentContextNode.value.key === 'default-group'
+      ? null
+      : Number.parseInt(currentContextNode.value.key.replace('group-', ''));
+  if (groupId === null) return; // 默认分组不能编辑
   const group = groups.value?.find(g => g.id === groupId);
   if (group) {
     isEditGroup.value = true;
@@ -407,116 +449,6 @@ const getSessionIcon = (conn: Connection) => {
   };
 };
 
-const getConnCount = (conn: Connection) => {
-  return connStore.connections.filter(c => c.host === conn.host && !c.errorCausedClosed).length;
-};
-
-const getErrorConnCount = (conn: Connection) => {
-  return connStore.connections.filter(c => c.host === conn.host && c.errorCausedClosed).length;
-};
-
-const getProtocolIcon = (conn: Connection) => {
-  const protocol = conn.connProtocol;
-  switch (protocol) {
-    case ConnProtocol.SSH:
-      return 'ph:terminal-duotone';
-    case ConnProtocol.Telnet:
-      return 'ph:broadcast-duotone';
-    case ConnProtocol.RDP:
-      return 'ph:desktop-duotone';
-    case ConnProtocol.VNC:
-      return 'ph:monitor-duotone';
-    case ConnProtocol.Serial:
-      return 'ph:plug-duotone';
-    default:
-      return 'ph:gconn-duotone';
-  }
-};
-
-const themeVars = useThemeVars();
-
-const sidebarRef = ref<HTMLElement | null>(null);
-const sidebarWidth = ref(Number(localStorage.getItem('sidebarWidth')) || 260);
-const minWidth = 260;
-const maxWidth = 380;
-const isResizing = ref(false);
-
-const startResize = (e: MouseEvent) => {
-  e.preventDefault();
-  isResizing.value = true;
-  document.body.style.cursor = 'col-resize';
-  document.body.style.userSelect = 'none';
-
-  const startX = e.clientX;
-  const startWidth = sidebarWidth.value;
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing.value) return;
-
-    const delta = e.clientX - startX;
-    const newWidth = Math.min(Math.max(startWidth + delta, minWidth), maxWidth);
-    sidebarWidth.value = newWidth;
-    localStorage.setItem('sidebarWidth', newWidth.toString());
-  };
-
-  const handleMouseUp = () => {
-    isResizing.value = false;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-};
-
-onMounted(async () => {
-  await fetchData();
-
-  window.addEventListener('sidebar-width-change', ((e: CustomEvent) => {
-    sidebarWidth.value = e.detail;
-  }) as EventListener);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('sidebar-width-change', ((e: CustomEvent) => {
-    sidebarWidth.value = e.detail;
-  }) as EventListener);
-});
-
-const filteredAssets = computed(() => {
-  if (!searchText.value) return conns.value || [];
-  return (
-    conns.value?.filter(
-      conn =>
-        conn.label.toLowerCase().includes(searchText.value.toLowerCase()) ||
-        conn.host?.toLowerCase().includes(searchText.value.toLowerCase()),
-    ) || []
-  );
-});
-
-const filteredGroups = computed(() => {
-  if (!searchText.value) return groups.value || [];
-  return groups.value?.filter(group => group.name.toLowerCase().includes(searchText.value.toLowerCase())) || [];
-});
-
-const getGroupConnCount = (group: Group) => {
-  return conns.value?.filter(conn => conn.groupID === group.id).length || 0;
-};
-
-const handleSelectConn = (conn: Connection) => {
-  toTerminal(conn);
-};
-
-const handleSelectGroup = (group: Group | null) => {
-  if (selectedGroup.value?.id === group?.id) {
-    selectedGroup.value = null;
-  } else {
-    selectedGroup.value = group;
-  }
-};
-
 const handleConnContextMenu = (event: MouseEvent, conn: Connection) => {
   event.preventDefault();
   dropdownX.value = event.clientX;
@@ -526,17 +458,20 @@ const handleConnContextMenu = (event: MouseEvent, conn: Connection) => {
   updateDropdownOptions('conn');
 };
 
-const handleGroupContextMenu = (event: MouseEvent, group: Group) => {
+const handleGroupContextMenu = (event: MouseEvent, group: Group | null) => {
   event.preventDefault();
   dropdownX.value = event.clientX;
   dropdownY.value = event.clientY;
   showDropdown.value = true;
-  currentContextNode.value = { key: `group-${group.id}` };
-  updateDropdownOptions('group');
+  const isDefaultGroup = group === null;
+  currentContextNode.value = { key: group ? `group-${group.id}` : 'default-group' };
+  updateDropdownOptions('group', isDefaultGroup);
 };
 
 const handleDeleteGroup = async () => {
   if (!currentContextNode.value) return;
+  // 默认分组不能删除
+  if (currentContextNode.value.key === 'default-group') return;
   const groupId = Number.parseInt(currentContextNode.value.key.replace('group-', ''));
   const group = groups.value?.find(g => g.id === groupId);
   if (!group) return;
@@ -591,270 +526,209 @@ const handleDropdownSelect = async (key: string) => {
   }
   currentContextNode.value = null;
 };
+
+onMounted(async () => {
+  await fetchData();
+});
 </script>
 
 <style lang="less" scoped>
 .page-container {
   height: 100%;
   display: flex;
-  position: relative;
+  flex-direction: column;
+  padding: 12px;
+  overflow: hidden;
 }
 
-.sidebar {
-  border-right: none;
+.toolbar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
   flex-shrink: 0;
-}
 
-.groups-list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-
-  .list-header {
-    padding: 6px;
+  .toolbar-left {
     display: flex;
     align-items: center;
-    border-bottom: 1px solid v-bind('themeVars.borderColor');
-
-    .title {
-      font-size: 13px;
-      font-weight: 600;
-      color: v-bind('themeVars.textColorBase');
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-left: auto;
-    }
+    gap: 12px;
   }
 
-  .list-content {
-    padding: 2px 4px;
-    height: calc(100vh - 80px);
-    overflow-y: auto;
-    scroll-behavior: smooth;
-    position: relative;
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
 
-    &::-webkit-scrollbar {
-      display: none;
-    }
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+.groups-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
 
-    :deep(.n-tree) {
-      .n-tree-node {
-        &:hover {
-          background: v-bind('`${themeVars.primaryColor}10`');
-        }
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
 
-        &.n-tree-node--selected {
-          background: v-bind('`${themeVars.primaryColor}20`');
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-          .n-tree-node-content {
-            color: v-bind('themeVars.primaryColor');
-          }
-        }
+  &::-webkit-scrollbar-thumb {
+    background: v-bind('themeVars.borderColor');
+    border-radius: 4px;
 
-        .n-tree-node-content {
-          .n-tree-node-content__text {
-            border-bottom: none !important;
-            text-decoration: none !important;
-          }
-        }
-      }
-
-      .n-tree__empty {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
+    &:hover {
+      background: v-bind('themeVars.textColor3');
     }
   }
 }
 
-.main-content {
-  flex: 1;
+.group-section {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.group-header {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+  border-radius: 6px;
+
+  &:hover {
+    background: v-bind('`${themeVars.primaryColor}08`');
+  }
+
+  .group-icon {
+    font-size: 18px;
+    color: v-bind('themeVars.primaryColor');
+    flex-shrink: 0;
+  }
+
+  .group-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: v-bind('themeVars.textColorBase');
+    flex: 1;
+  }
+
+  .group-count {
+    font-size: 12px;
+    color: v-bind('themeVars.textColor3');
+    background: v-bind('themeVars.borderColor');
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+}
+
+.group-content {
+  padding-left: 8px;
+}
+
+.empty-group {
   padding: 24px;
-  position: relative;
-
-  .content-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      h2 {
-        font-size: 20px;
-        font-weight: 600;
-        color: v-bind('themeVars.textColorBase');
-        margin: 0;
-      }
-    }
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
 }
 
 .conns-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
-  overflow-y: auto;
-  padding-right: 4px;
 }
 
 .conn-card {
   background: v-bind('themeVars.cardColor');
-  border-radius: 8px;
-  overflow: hidden;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
   border: 1px solid v-bind('themeVars.borderColor');
+  padding: 8px;
 
   &:hover {
     border-color: v-bind('themeVars.primaryColor');
-
-    .card-header {
-      .edit-btn {
-        opacity: 1;
-      }
-    }
+    background: v-bind('`${themeVars.primaryColor}05`');
   }
 
-  .card-header {
-    padding: 12px;
+  .card-content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 10px;
 
-    .card-left {
+    .os-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      background: v-bind('`${themeVars.primaryColor}15`');
+      color: v-bind('themeVars.primaryColor');
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+
+      &.text-logo {
+        :deep(svg) {
+          width: 80%;
+          height: 100%;
+        }
+      }
+
+      :deep(svg) {
+        width: 70%;
+        height: 100%;
+        object-fit: contain;
+      }
+    }
+
+    .card-info {
       flex: 1;
       min-width: 0;
 
-      .os-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 6px;
-        background: v-bind('`${themeVars.primaryColor}20`');
-        color: v-bind('themeVars.primaryColor');
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        flex-shrink: 0;
-
-        &.text-logo {
-          :deep(svg) {
-            width: 80%;
-            height: 100%;
-          }
-        }
-
-        :deep(svg) {
-          width: 70%;
-          height: 100%;
-          object-fit: contain;
-        }
+      .conn-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: v-bind('themeVars.textColorBase');
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
-      .card-info {
-        min-width: 0;
-
-        .conn-name {
-          font-size: 14px;
-          font-weight: 600;
-          color: v-bind('themeVars.textColorBase');
-          margin-bottom: 2px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
+      .conn-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
 
         .conn-info {
-          font-size: 12px;
           color: v-bind('themeVars.textColor3');
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .protocol-badge {
+          color: v-bind('themeVars.textColor3');
+          background: v-bind('themeVars.borderColor');
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 11px;
+          flex-shrink: 0;
         }
       }
-    }
-
-    .edit-btn {
-      opacity: 0;
-      transition: all 0.2s ease;
-      margin-left: 8px;
-      background: v-bind('`${themeVars.primaryColor}20`');
-      width: 32px;
-      height: 32px;
-      border-radius: 6px !important;
-
-      :deep(.edit-icon) {
-        font-size: 16px;
-      }
-
-      &:hover {
-        color: v-bind('themeVars.primaryColor');
-        background: v-bind('`${themeVars.primaryColor}30`');
-      }
-    }
-  }
-
-  .card-footer {
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: auto;
-    border-top: 1px dashed v-bind('themeVars.borderColor');
-
-    .protocol-info {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: v-bind('themeVars.textColor3');
-      flex-shrink: 0;
-
-      :deep(svg) {
-        font-size: 16px;
-        color: v-bind('themeVars.primaryColor');
-      }
-    }
-
-    .connection-tags {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      margin-left: auto;
-    }
-
-    :deep(.n-tag) {
-      padding: 0;
-      width: 18px;
-      height: 18px;
-      line-height: 18px;
-      text-align: center;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
   }
 }
@@ -863,110 +737,7 @@ const handleDropdownSelect = async (key: string) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: calc(100% - 72px);
+  height: 100%;
   width: 100%;
-}
-
-.resize-handle {
-  width: 4px;
-  cursor: col-resize;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 10;
-  margin-left: -2px;
-  border-right: 1px solid v-bind('themeVars.borderColor');
-  background: transparent;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 8px 4px;
-
-  .section-title {
-    padding: 0;
-    font-size: 12px;
-    font-weight: 600;
-    color: v-bind('themeVars.textColor3');
-  }
-
-  :deep(.n-button) {
-    width: 16px;
-    height: 16px;
-    color: v-bind('themeVars.textColor3');
-
-    .n-button__icon {
-      font-size: 14px;
-    }
-  }
-}
-
-.asset-list,
-.group-list {
-  .asset-item,
-  .group-item {
-    display: flex;
-    align-items: center;
-    padding: 4px 8px;
-    margin: 0 4px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background: v-bind('`${themeVars.primaryColor}10`');
-    }
-
-    .asset-icon,
-    .group-icon {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: v-bind('`${themeVars.primaryColor}20`');
-      color: v-bind('themeVars.primaryColor');
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-
-    .asset-info,
-    .group-info {
-      flex: 1;
-      min-width: 0;
-      margin-left: 6px;
-
-      .asset-name,
-      .group-name {
-        font-size: 14px;
-        color: v-bind('themeVars.textColorBase');
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-    }
-
-    .group-count {
-      font-size: 12px;
-      color: v-bind('themeVars.textColor3');
-      margin-left: 6px;
-      min-width: 16px;
-      text-align: right;
-    }
-  }
-
-  .group-item {
-    &.active {
-      background: v-bind('`${themeVars.primaryColor}20`');
-
-      .group-name {
-        color: v-bind('themeVars.primaryColor');
-      }
-    }
-  }
 }
 </style>

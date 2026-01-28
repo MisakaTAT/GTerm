@@ -25,13 +25,12 @@ func main() {
 	})
 
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:            consts.ApplicationName,
-		Width:            1200,
-		Height:           800,
-		MinWidth:         1024,
-		MinHeight:        768,
-		Frameless:        !app.PreferencesSrv.IsDarwin(),
-		BackgroundColour: application.NewRGBA(27, 38, 54, 0),
+		Title:     consts.ApplicationName,
+		Width:     1200,
+		Height:    800,
+		MinWidth:  1024,
+		MinHeight: 768,
+		Frameless: !app.PreferencesSrv.IsDarwin(),
 		Mac: application.MacWindow{
 			TitleBar: application.MacTitleBarHidden,
 		},

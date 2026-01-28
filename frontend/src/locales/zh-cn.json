@@ -165,6 +165,7 @@
     },
     "connection": {
       "search": "搜索资产",
+      "defaultGroup": "默认分组",
       "add": {
         "group": "新建分组",
         "conn": "新建连接"
