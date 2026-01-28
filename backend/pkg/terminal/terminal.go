@@ -14,10 +14,11 @@ type Handler interface {
 }
 
 type Payload struct {
-	Type enums.TerminalType `json:"type"`
-	Cmd  string             `json:"cmd"`
-	Cols int                `json:"cols"`
-	Rows int                `json:"rows"`
+	Type  enums.TerminalType `json:"type"`
+	Cmd   string             `json:"cmd"`
+	Cols  int                `json:"cols"`
+	Rows  int                `json:"rows"`
+	Pause *bool              `json:"pause,omitempty"` // true = pause, false = resume
 }
 
 type Terminal struct {

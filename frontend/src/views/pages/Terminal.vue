@@ -80,9 +80,10 @@ import '@xterm/xterm/css/xterm.css';
 import { Icon } from '@iconify/vue';
 import { TerminalType } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
 import { WebsocketPort } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/terminalsrv';
-import { CanvasAddon } from '@xterm/addon-canvas';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { WebglAddon } from '@xterm/addon-webgl';
+import { CanvasAddon } from '@xterm/addon-canvas';
 import { Terminal } from '@xterm/xterm';
 import { debounce } from 'lodash';
 import { NButton, NCode, NCollapse, NCollapseItem, NIcon, NResult, NSpace, NSpin } from 'naive-ui';
@@ -103,9 +104,65 @@ const terminalRefs = ref<Record<number, HTMLElement | null>>({});
 const terminals = ref<Record<number, Terminal | undefined>>({});
 const sockets = ref<Record<number, WebSocket | undefined>>({});
 const fitAddons = ref<Record<number, FitAddon | undefined>>({});
-const webLinksAddon = ref<WebLinksAddon>(new WebLinksAddon());
-const canvasAddon = ref<CanvasAddon>(new CanvasAddon());
+const webLinksAddons = ref<Record<number, WebLinksAddon | undefined>>({});
+const webglAddons = ref<Record<number, WebglAddon | undefined>>({});
+const canvasAddons = ref<Record<number, CanvasAddon | undefined>>({});
 const connectedTerminals = ref<Record<number, boolean>>({});
+
+// 流控制
+class FlowControl {
+  private blocked = false;
+  private pendingCallbacks = 0;
+  private lowWatermark = 5;
+  private highWatermark = 10;
+  private bytesWritten = 0;
+  private bytesThreshold = 1024 * 128; // 128KB
+
+  constructor(
+    private xterm: Terminal,
+    private onPause: (paused: boolean) => void,
+  ) {}
+
+  async write(data: string): Promise<void> {
+    if (this.blocked) {
+      await new Promise<void>(resolve => {
+        const checkUnblocked = () => {
+          if (!this.blocked) {
+            resolve();
+          } else {
+            setTimeout(checkUnblocked, 10);
+          }
+        };
+        checkUnblocked();
+      });
+    }
+
+    this.bytesWritten += data.length;
+
+    if (this.bytesWritten > this.bytesThreshold) {
+      this.pendingCallbacks++;
+      this.bytesWritten = 0;
+
+      if (!this.blocked && this.pendingCallbacks > this.highWatermark) {
+        this.blocked = true;
+        this.onPause(true);
+      }
+
+      this.xterm.write(data, () => {
+        this.pendingCallbacks--;
+        if (this.blocked && this.pendingCallbacks < this.lowWatermark) {
+          this.blocked = false;
+          this.onPause(false);
+        }
+      });
+    } else {
+      this.xterm.write(data);
+    }
+  }
+}
+
+// 流控制实例
+const flowControls = ref<Record<number, FlowControl | undefined>>({});
 
 const isTerminalHidden = (connId: number) => {
   return connId !== activeConn.value?.id;
@@ -208,6 +265,7 @@ const initializeTerminal = async (id: number) => {
   });
 
   fitAddons.value[id] = new FitAddon();
+  webLinksAddons.value[id] = new WebLinksAddon();
 };
 
 const initializeXterm = async (id: number) => {
@@ -217,8 +275,19 @@ const initializeXterm = async (id: number) => {
   if (!terminalEl || !terminal || !fitAddon) return;
 
   fitAddon.activate(terminal);
-  webLinksAddon.value.activate(terminal);
-  canvasAddon.value.activate(terminal);
+  webLinksAddons.value[id]?.activate(terminal);
+
+  // WebGL 优先，失败回退 Canvas
+  try {
+    const webglAddon = new WebglAddon();
+    terminal.loadAddon(webglAddon);
+    webglAddons.value[id] = webglAddon;
+  } catch (error) {
+    console.warn('WebGL addon failed, falling back to Canvas:', error);
+    const canvasAddon = new CanvasAddon();
+    terminal.loadAddon(canvasAddon);
+    canvasAddons.value[id] = canvasAddon;
+  }
   terminal.attachCustomKeyEventHandler(arg => {
     if (arg.code === 'PageUp' && arg.type === 'keydown') {
       terminal?.scrollPages(-1);
@@ -231,6 +300,20 @@ const initializeXterm = async (id: number) => {
   });
 
   terminal.open(terminalEl);
+
+  // 初始化流控制
+  flowControls.value[id] = new FlowControl(terminal, (paused: boolean) => {
+    const socket = sockets.value[id];
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(
+        JSON.stringify({
+          type: TerminalType.TerminalTypeFlowControl,
+          pause: paused,
+        }),
+      );
+    }
+  });
+
   terminal.onData(data => sockets.value[id]?.send(JSON.stringify({ type: TerminalType.TerminalTypeCMD, cmd: data })));
   terminal.onResize(({ cols, rows }) => {
     if (sockets.value[id]?.readyState === WebSocket.OPEN) {
@@ -304,7 +387,7 @@ const initializeWebsocket = async (id: number, hostId: number) => {
           });
           break;
         case TerminalType.TerminalTypeData:
-          terminals.value[id]?.write(data.content);
+          await handleTerminalData(id, data.content);
           break;
       }
     };
@@ -355,6 +438,13 @@ const reconnect = async (id: number) => {
   await initializeWebsocket(id, conn.connId);
 };
 
+const handleTerminalData = async (id: number, content: string) => {
+  const flowControl = flowControls.value[id];
+  if (!flowControl) return;
+
+  await flowControl.write(content);
+};
+
 const closeTerminal = (id: number) => {
   sockets.value[id]?.close();
   sockets.value[id] = undefined;
@@ -369,6 +459,18 @@ const closeTerminal = (id: number) => {
 
   fitAddons.value[id]?.dispose();
   fitAddons.value[id] = undefined;
+
+  // WebLinksAddon 无 dispose
+  delete webLinksAddons.value[id];
+
+  webglAddons.value[id]?.dispose();
+  webglAddons.value[id] = undefined;
+
+  canvasAddons.value[id]?.dispose();
+  canvasAddons.value[id] = undefined;
+
+  // 清理流控
+  delete flowControls.value[id];
 
   updateStatus(id, {
     isConnecting: false,

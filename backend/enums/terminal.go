@@ -11,9 +11,10 @@ const (
 	TerminalTypeFingerprintConfirm TerminalType = "FingerprintConfirm"
 	TerminalTypeResize             TerminalType = "Resize"
 	TerminalTypeCMD                TerminalType = "CMD"
+	TerminalTypeFlowControl        TerminalType = "FlowControl"
 )
 
-var TerminalTypeEnums = []TerminalType{TerminalTypeError, TerminalTypeData, TerminalTypeConnected, TerminalTypeFingerprintConfirm, TerminalTypeResize, TerminalTypeCMD}
+var TerminalTypeEnums = []TerminalType{TerminalTypeError, TerminalTypeData, TerminalTypeConnected, TerminalTypeFingerprintConfirm, TerminalTypeResize, TerminalTypeCMD, TerminalTypeFlowControl}
 
 func (a TerminalType) TSName() string {
 	return strings.ToUpper(string(a))
