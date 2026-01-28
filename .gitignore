@@ -8,3 +8,5 @@ frontend/package.json.md5
 frontend/bindings
 frontend/.idea
 .DS_Store
+bin/
+.task/

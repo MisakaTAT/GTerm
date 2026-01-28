@@ -1,19 +1,6 @@
 <template>
   <div class="header" @dblclick="toggleFullscreen">
-    <div
-      class="logo-container"
-      :class="{
-        'padding-left-small': !isDarwin,
-        'padding-left-large': isDarwin,
-        'center-position': !hasConnections && !isFullscreen,
-        'left-position': hasConnections || isFullscreen,
-        fullscreen: isFullscreen,
-      }"
-    >
-      <div class="logo-wrapper" @click="toConnection">
-        <img src="@/assets/images/icon.png" alt="Logo" class="logo-image" />
-        <span class="app-title" :class="{ hidden: hasConnections }">GTerm</span>
-      </div>
+    <div class="header-content">
       <ConnectionTabs v-if="hasConnections" ref="connectionTabsRef" class="connection-tabs-container" />
     </div>
 
@@ -49,15 +36,10 @@ defineExpose({
 
 const connectionStore = useConnectionStore();
 const hasConnections = computed(() => connectionStore.hasConnections);
-const router = useRouter();
 
 const isDarwin = ref(false);
 const isFullscreen = ref(false);
 const windowIsMaximised = ref(false);
-
-const toConnection = () => {
-  router.push({ name: 'Connection' });
-};
 
 const toggleMaximize = async () => {
   const isMaximised = await Window.IsMaximised();
@@ -107,60 +89,17 @@ onUnmounted(() => {
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   justify-content: space-between;
+  flex: 1;
 }
 
-.logo-container {
-  position: absolute;
+.header-content {
   display: flex;
   align-items: center;
-  transition: all 0.3s ease-in-out;
-
-  &.padding-left-small {
-    padding-left: 8px;
-  }
-
-  &.padding-left-large {
-    padding-left: 80px;
-
-    &.fullscreen {
-      padding-left: 8px;
-    }
-  }
-
-  &.center-position {
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  &.left-position {
-    left: 0;
-    transform: translateX(0);
-  }
-}
-
-.logo-wrapper {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.logo-image {
-  width: 24px;
-  height: 24px;
-}
-
-.app-title {
-  padding-left: 8px;
-  font-size: 14px;
-  font-weight: 600;
-
-  &.hidden {
-    display: none;
-  }
+  flex: 1;
 }
 
 .connection-tabs-container {
-  margin-left: 16px;
+  margin-left: 8px;
 }
 
 .window-controls {
@@ -170,8 +109,8 @@ onUnmounted(() => {
 }
 
 .window-control-btn {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;

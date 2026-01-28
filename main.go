@@ -22,9 +22,6 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
 	})
 
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -33,12 +30,9 @@ func main() {
 		Height:           800,
 		MinWidth:         1024,
 		MinHeight:        768,
-		Frameless:        app.PreferencesSrv.IsDarwin(),
 		BackgroundColour: application.NewRGBA(27, 38, 54, 0),
 		Mac: application.MacWindow{
-			// InvisibleTitleBarHeight: 10,
-			// Backdrop: application.MacBackdropTranslucent,
-			TitleBar: application.MacTitleBarHiddenInset,
+			TitleBar: application.MacTitleBarHidden,
 		},
 		Windows: application.WindowsWindow{},
 		URL:     "/",
