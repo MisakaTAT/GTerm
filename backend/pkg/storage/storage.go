@@ -1,11 +1,12 @@
 package storage
 
 import (
-	"github.com/MisakaTAT/GTerm/backend/consts"
-	"github.com/vrischmann/userdir"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/MisakaTAT/GTerm/backend/consts"
+	"github.com/vrischmann/userdir"
 )
 
 type LocalStorage struct {

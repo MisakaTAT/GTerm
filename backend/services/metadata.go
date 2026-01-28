@@ -1,6 +1,8 @@
 package services
 
 import (
+	"log/slog"
+
 	"github.com/MisakaTAT/GTerm/backend/dal/model"
 	"github.com/MisakaTAT/GTerm/backend/dal/query"
 	"github.com/MisakaTAT/GTerm/backend/pkg/exec"
@@ -8,7 +10,6 @@ import (
 	commonssh "github.com/MisakaTAT/GTerm/backend/pkg/ssh"
 	"github.com/google/wire"
 	"go.uber.org/zap"
-	"log/slog"
 )
 
 var MetadataSrvSet = wire.NewSet(wire.Struct(new(MetadataSrv), "*"))

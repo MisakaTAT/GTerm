@@ -679,7 +679,7 @@ const handleTransferProgress = (data: any) => {
       transferred: data.transferred || 0,
       isUpload: taskType,
       status: FileTransferTaskState.Progress,
-      error: null
+      error: null,
     };
 
     transferTasks.value.push(newTask);

@@ -2,6 +2,7 @@ package initialize
 
 import (
 	"fmt"
+
 	"github.com/MisakaTAT/GTerm/backend/consts"
 	"github.com/MisakaTAT/GTerm/backend/dal/model"
 	"github.com/MisakaTAT/GTerm/backend/dal/query"

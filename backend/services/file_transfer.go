@@ -2,9 +2,10 @@ package services
 
 import (
 	"errors"
-	"github.com/MisakaTAT/GTerm/backend/enums"
 	"log/slog"
 	"sync"
+
+	"github.com/MisakaTAT/GTerm/backend/enums"
 
 	"github.com/MisakaTAT/GTerm/backend/consts/messages"
 	"github.com/MisakaTAT/GTerm/backend/initialize"

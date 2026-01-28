@@ -3,9 +3,10 @@ package services
 import (
 	"errors"
 	"fmt"
-	commonssh "github.com/MisakaTAT/GTerm/backend/pkg/ssh"
 	"log/slog"
 	"time"
+
+	commonssh "github.com/MisakaTAT/GTerm/backend/pkg/ssh"
 
 	"github.com/MisakaTAT/GTerm/backend/consts"
 	"github.com/MisakaTAT/GTerm/backend/consts/messages"
