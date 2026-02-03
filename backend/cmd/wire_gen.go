@@ -37,11 +37,6 @@ func NewApp() *App {
 	websocketSrv := &services.WebsocketSrv{
 		TerminalSrv: terminalSrv,
 	}
-	appContext := initialize.InitDefaultContext()
-	fileTransferSrv := &services.FileTransferSrv{
-		ConnectionSrv: connectionSrv,
-		AppContext:    appContext,
-	}
 	app := &App{
 		HTTPListenerPort: httpListenerPort,
 		TerminalSrv:      terminalSrv,
@@ -51,7 +46,6 @@ func NewApp() *App {
 		MetadataSrv:      metadataSrv,
 		CredentialSrv:    credentialSrv,
 		WebsocketSrv:     websocketSrv,
-		FileTransferSrv:  fileTransferSrv,
 	}
 	return app
 }

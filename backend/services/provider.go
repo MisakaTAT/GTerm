@@ -10,5 +10,4 @@ var ProviderSet = wire.NewSet(
 	PreferencesSrvSet,
 	TerminalSrvSet,
 	WebsocketSrvSet,
-	FileTransferSrvSet,
 )

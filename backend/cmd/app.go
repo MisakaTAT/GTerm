@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/MisakaTAT/GTerm/backend/enums"
 	"github.com/MisakaTAT/GTerm/backend/initialize"
 	"github.com/MisakaTAT/GTerm/backend/services"
 	"github.com/google/wire"
@@ -19,7 +18,6 @@ type App struct {
 	MetadataSrv      *services.MetadataSrv
 	CredentialSrv    *services.CredentialSrv
 	WebsocketSrv     *services.WebsocketSrv
-	FileTransferSrv  *services.FileTransferSrv
 }
 
 func (a *App) Services() (servers []application.Service) {
@@ -30,14 +28,5 @@ func (a *App) Services() (servers []application.Service) {
 	servers = append(servers, application.NewService(a.MetadataSrv))
 	servers = append(servers, application.NewService(a.CredentialSrv))
 	servers = append(servers, application.NewService(a.WebsocketSrv))
-	servers = append(servers, application.NewService(a.FileTransferSrv))
-	return
-}
-
-func (a *App) Enums() (es []any) {
-	es = append(es, enums.AuthMethodEnums)
-	es = append(es, enums.ConnProtocolEnums)
-	es = append(es, enums.TerminalTypeEnums)
-	es = append(es, enums.FileTransferTaskStateEnums)
 	return
 }

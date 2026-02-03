@@ -178,3 +178,9 @@ func (s *TerminalSrv) WebsocketPort() int {
 	slog.Debug("WebSocket service port: %d", port)
 	return port
 }
+
+func (s *TerminalSrv) Types(
+	_ *enums.ConnProtocol,
+	_ *enums.TerminalType,
+) {
+}

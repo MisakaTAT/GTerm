@@ -1,7 +1,5 @@
 package enums
 
-import "strings"
-
 type TerminalType string
 
 const (
@@ -13,9 +11,3 @@ const (
 	TerminalTypeCMD                TerminalType = "CMD"
 	TerminalTypeFlowControl        TerminalType = "FlowControl"
 )
-
-var TerminalTypeEnums = []TerminalType{TerminalTypeError, TerminalTypeData, TerminalTypeConnected, TerminalTypeFingerprintConfirm, TerminalTypeResize, TerminalTypeCMD, TerminalTypeFlowControl}
-
-func (a TerminalType) TSName() string {
-	return strings.ToUpper(string(a))
-}

@@ -1,7 +1,5 @@
 package enums
 
-import "strings"
-
 type ConnProtocol string
 
 const (
@@ -11,9 +9,3 @@ const (
 	VNC    ConnProtocol = "VNC"
 	Serial ConnProtocol = "Serial"
 )
-
-var ConnProtocolEnums = []ConnProtocol{SSH, Telnet, RDP, VNC, Serial}
-
-func (c ConnProtocol) TSName() string {
-	return strings.ToUpper(string(c))
-}

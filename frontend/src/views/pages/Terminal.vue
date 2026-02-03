@@ -81,9 +81,7 @@ import { Icon } from '@iconify/vue';
 import { TerminalType } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/enums';
 import { WebsocketPort } from '@wailsApp/github.com/MisakaTAT/GTerm/backend/services/terminalsrv';
 import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { CanvasAddon } from '@xterm/addon-canvas';
 import { Terminal } from '@xterm/xterm';
 import { debounce } from 'lodash';
 import { NButton, NCode, NCollapse, NCollapseItem, NIcon, NResult, NSpace, NSpin } from 'naive-ui';
@@ -104,9 +102,7 @@ const terminalRefs = ref<Record<number, HTMLElement | null>>({});
 const terminals = ref<Record<number, Terminal | undefined>>({});
 const sockets = ref<Record<number, WebSocket | undefined>>({});
 const fitAddons = ref<Record<number, FitAddon | undefined>>({});
-const webLinksAddons = ref<Record<number, WebLinksAddon | undefined>>({});
 const webglAddons = ref<Record<number, WebglAddon | undefined>>({});
-const canvasAddons = ref<Record<number, CanvasAddon | undefined>>({});
 const connectedTerminals = ref<Record<number, boolean>>({});
 
 // 流控制
@@ -236,13 +232,6 @@ const setXtermDomSize = (id: number) => {
   const terminalEl = terminalRefs.value[id];
   const fitAddon = fitAddons.value[id];
   if (fitAddon && connectedTerminals.value[id] && terminalEl) {
-    const xtermElement = terminalEl.querySelector('.xterm') as HTMLElement;
-    if (xtermElement) {
-      const hight = terminalEl.clientHeight - 16;
-      const weight = terminalEl.clientWidth - 16;
-      xtermElement.style.height = `${hight}px`;
-      xtermElement.style.width = `${weight}px`;
-    }
     fitAddon.fit();
   }
 };
@@ -265,7 +254,6 @@ const initializeTerminal = async (id: number) => {
   });
 
   fitAddons.value[id] = new FitAddon();
-  webLinksAddons.value[id] = new WebLinksAddon();
 };
 
 const initializeXterm = async (id: number) => {
@@ -275,7 +263,6 @@ const initializeXterm = async (id: number) => {
   if (!terminalEl || !terminal || !fitAddon) return;
 
   fitAddon.activate(terminal);
-  webLinksAddons.value[id]?.activate(terminal);
 
   // WebGL 优先，失败回退 Canvas
   try {
@@ -284,9 +271,6 @@ const initializeXterm = async (id: number) => {
     webglAddons.value[id] = webglAddon;
   } catch (error) {
     console.warn('WebGL addon failed, falling back to Canvas:', error);
-    const canvasAddon = new CanvasAddon();
-    terminal.loadAddon(canvasAddon);
-    canvasAddons.value[id] = canvasAddon;
   }
   terminal.attachCustomKeyEventHandler(arg => {
     if (arg.code === 'PageUp' && arg.type === 'keydown') {
@@ -320,6 +304,13 @@ const initializeXterm = async (id: number) => {
       sockets.value[id]?.send(JSON.stringify({ type: TerminalType.TerminalTypeResize, cols, rows }));
     }
   });
+};
+
+const handleTerminalData = async (id: number, content: string) => {
+  const flowControl = flowControls.value[id];
+  if (!flowControl) return;
+
+  await flowControl.write(content);
 };
 
 const initializeWebsocket = async (id: number, hostId: number) => {
@@ -438,13 +429,6 @@ const reconnect = async (id: number) => {
   await initializeWebsocket(id, conn.connId);
 };
 
-const handleTerminalData = async (id: number, content: string) => {
-  const flowControl = flowControls.value[id];
-  if (!flowControl) return;
-
-  await flowControl.write(content);
-};
-
 const closeTerminal = (id: number) => {
   sockets.value[id]?.close();
   sockets.value[id] = undefined;
@@ -461,13 +445,9 @@ const closeTerminal = (id: number) => {
   fitAddons.value[id] = undefined;
 
   // WebLinksAddon 无 dispose
-  delete webLinksAddons.value[id];
 
   webglAddons.value[id]?.dispose();
   webglAddons.value[id] = undefined;
-
-  canvasAddons.value[id]?.dispose();
-  canvasAddons.value[id] = undefined;
 
   // 清理流控
   delete flowControls.value[id];
@@ -541,33 +521,6 @@ defineExpose({ closeTerminal });
     left: 0;
     right: 0;
     bottom: 0;
-  }
-
-  :deep(.xterm) {
-    padding: 8px 16px 8px 8px;
-
-    .xterm-screen {
-      width: 100% !important;
-      height: 100% !important;
-    }
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    .xterm-viewport {
-      &::-webkit-scrollbar {
-        width: 8px;
-      }
-      &::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      }
-    }
   }
 
   .n-result {
