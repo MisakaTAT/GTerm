@@ -247,10 +247,11 @@ const initializeTerminal = async (id: number) => {
     convertEol: true,
     disableStdin: false,
     fontSize: 16,
+    fontFamily: '"JetBrains Mono", monospace',
     cursorBlink: true,
     cursorStyle: 'bar',
     theme,
-    scrollback: 1000,
+    scrollback: 25000,
   });
 
   fitAddons.value[id] = new FitAddon();
@@ -506,21 +507,20 @@ defineExpose({ closeTerminal });
 <style lang="less" scoped>
 .xterm-container {
   height: 100%;
-  position: relative;
-
-  .terminal-hidden {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-    z-index: -1;
-  }
 
   .xterm-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .xterm-wrapper :deep(.xterm) {
+    height: 100%;
+    padding: 8px;
+  }
+
+  .xterm-wrapper :deep(.xterm-viewport) {
+    overflow-y: auto;
   }
 
   .n-result {
